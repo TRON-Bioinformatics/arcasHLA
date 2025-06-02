@@ -68,3 +68,21 @@ def test_partial_allele_typing(repo_root, extract_reads, tmp_path):
         output[key] = set(output[key])
         expected_output[key] = set(expected_output[key])
     assert output == expected_output
+
+
+def test_reference_customization(repo_root, tmp_path):
+    genotype_result_path = f"{repo_root}/test/expected_output/test.genotype.json"
+    custom_ref_out_path = f"{str(tmp_path)}/custom_reference"
+
+    custom_ref_command = [
+        f"{repo_root}/arcasHLA",
+        "customize",
+        "--genotype",
+        genotype_result_path,
+        "-o",
+        custom_ref_out_path,
+    ]
+
+    customize_result = subprocess.run(custom_ref_command, capture_output=True)
+
+    assert customize_result.returncode == 0
