@@ -234,8 +234,7 @@ def process_str_genotype(input_genotype, genes):
     return genotype
 
 
-if __name__ == "__main__":
-
+def main(args: list[str]) -> None:
     # with open(parameters, 'rb') as file:
     #    genes, populations, databases = pickle.load(file)
     with open(parameters_json, "r") as file:
@@ -327,7 +326,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if args.resolution != 2:
         sys.exit("[customize] only 2-field resolution supported at this time.")
@@ -442,5 +441,8 @@ if __name__ == "__main__":
             args.subject, genotype, args.grouping, args.transcriptome, temp
         )
 
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
 
 # -----------------------------------------------------------------------------
