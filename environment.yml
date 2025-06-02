@@ -1,7 +1,7 @@
 name: arcas-hla
 channels:
-- bioconda
 - conda-forge
+- bioconda
 dependencies:
 - bedtools==2.31.1
 - biopython==1.83
