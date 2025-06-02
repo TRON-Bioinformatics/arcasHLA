@@ -24,32 +24,23 @@
 
 import os
 import sys
-import re
 import json
 import pickle
 import argparse
-import logging as log
 
-import numpy as np
-import math
 import tarfile as tf
 import pandas as pd
 
-from datetime import date
 from argparse import RawTextHelpFormatter
 from textwrap import wrap
-from collections import Counter, defaultdict
-from itertools import combinations
+from collections import defaultdict
 
-from Bio.Alphabet import generic_dna
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-from reference import check_ref
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
