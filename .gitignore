@@ -2,3 +2,6 @@ clean_ref
 *.log
 __pycache__/
 arcashla_latest.sif
+
+# Editor configs
+.vscode
