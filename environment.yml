@@ -4,6 +4,7 @@ channels:
 - bioconda
 dependencies:
 - bedtools==2.31.1
+- black
 - biopython==1.83
 - coreutils==9.4
 - git==2.43.0
