@@ -18,6 +18,13 @@ For development, also include the `dev_environment.yml`:
 conda env create -f environment.yml -f dev_environment.yml -n arcas-hla-dev
 ```
 
+Basic development tasks are recorded in the [Makefile](./Makefile):
+
+```sh
+conda run -n arcas-hla-dev make format
+conda run -n arcas-hla-dev make test
+```
+
 ### Test ###
 
 **(Update 2023-09-29)**: The below tests are now implemented as a pytest [suite](./test/test_scripts.py). You can run this locally by building the docker environment and running pytest. From the current directory:

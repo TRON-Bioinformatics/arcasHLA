@@ -2,4 +2,9 @@ channels:
 - conda-forge
 dependencies:
 - black
+- fd-find
+- make
+- mdformat
+- mdformat-gfm
 - pytest==8.0.0
+- yamlfmt
