@@ -1,0 +1,5 @@
+channels:
+- conda-forge
+dependencies:
+- black
+- pytest==8.0.0
