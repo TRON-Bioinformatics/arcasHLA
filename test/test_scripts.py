@@ -1,4 +1,7 @@
-# Test partial and whole HLA typing pipelines
+"""
+Test the individual scripts for expected output.
+"""
+
 import pytest
 import subprocess
 import json

@@ -32,8 +32,8 @@ conda run -n arcas-hla-dev make test
 ### Test
 
 **(Update 2023-09-29)**: The below tests are now implemented as a pytest
-[suite](./test/test_arcas_hla.py). You can run this locally by building the
-docker environment and running pytest. From the current directory:
+[suite](./test/test_scripts.py). You can run this locally by building the docker
+environment and running pytest. From the current directory:
 
 ```
 docker build -t <image-name> -f Docker/Dockerfile .
