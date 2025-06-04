@@ -16,6 +16,10 @@ conda env create -f environment.yml
 conda activate arcas-hla
 ```
 
+**NOTE**: This repo contains `git-lfs` files. Either ensure git-lfs is installed
+prior to cloning, or run `git lfs fetch && git lfs pull` if git lfs is installed
+after the repo was cloned.
+
 For development, also include the `dev_environment.yml`:
 
 ```sh
