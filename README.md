@@ -12,6 +12,12 @@ conda env create -f environment.yml
 conda activate arcas-hla
 ```
 
+For development, also include the `dev_environment.yml`:
+
+```sh
+conda env create -f environment.yml -f dev_environment.yml -n arcas-hla-dev
+```
+
 ### Test ###
 
 **(Update 2023-09-29)**: The below tests are now implemented as a pytest [suite](./test/test_scripts.py). You can run this locally by building the docker environment and running pytest. From the current directory:
