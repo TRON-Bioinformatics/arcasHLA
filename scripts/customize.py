@@ -356,7 +356,7 @@ def main(args: list[str]) -> None:
         print(genotype)
 
         build_custom_reference(
-            subject, genotype, args.grouping, args.transcriptome, temp
+            subject, genotype, args.grouping, args.transcriptome, temp, outdir
         )
 
     elif args.genotype.endswith(".genotypes.json") or args.genotype.endswith(".tsv"):
@@ -438,7 +438,7 @@ def main(args: list[str]) -> None:
         genotype = process_str_genotype(args.genotype, genes)
 
         build_custom_reference(
-            args.subject, genotype, args.grouping, args.transcriptome, temp
+            args.subject, genotype, args.grouping, args.transcriptome, temp, outdir
         )
 
 
