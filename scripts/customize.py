@@ -32,6 +32,7 @@ import logging as log
 
 import numpy as np
 import math
+import tarfile as tf
 import pandas as pd
 
 from datetime import date
@@ -60,30 +61,77 @@ __date__        = '2022-01-27'
 #   Paths and filenames
 #-------------------------------------------------------------------------------
 
-rootDir            = os.path.dirname(os.path.realpath(__file__)) + '/../'
-allele_groups_json = rootDir + 'dat/ref/allele_groups.json'
-cDNA_json          = rootDir + 'dat/ref/cDNA.json'
-cDNA_single_json   = rootDir + 'dat/ref/cDNA.single.json'
-GRCh38_chr6        = rootDir + 'dat/ref/GRCh38.chr6.noHLA.fasta'
-GRCh38             = rootDir + 'dat/ref/GRCh38.all.noHLA.fasta'
-HLA_json           = rootDir + 'dat/ref/hla_transcripts.json'
-dummy_HLA_fa       = rootDir + 'dat/ref/GRCh38.chr6.HLA.fasta'
-parameters_json    = rootDir + 'dat/info/parameters.json'
+rootDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
+allele_groups_json = rootDir + "dat/ref/allele_groups.json"
+cDNA_json = rootDir + "dat/ref/cDNA.json"
+cDNA_single_json = rootDir + "dat/ref/cDNA.single.json"
+HLA_json = rootDir + "dat/ref/hla_transcripts.json"
+parameters_json = rootDir + "dat/info/parameters.json"
 
-#-------------------------------------------------------------------------------
+zipped_ref_files = {
+    "GRCh38_chr6": rootDir + "dat/ref/GRCh38.chr6.noHLA.fasta",
+    "GRCh38": rootDir + "dat/ref/GRCh38.all.noHLA.fasta",
+    "dummy_HLA_fa": rootDir + "dat/ref/GRCh38.chr6.HLA.fasta",
+}
 
-def build_custom_reference(subject, genotype, grouping, transcriptome_type, temp):
-    
-    dummy_HLA_dict = SeqIO.to_dict(SeqIO.parse(dummy_HLA_fa, 'fasta')) 
-    
-    if transcriptome_type == 'none':
+
+class ZippedRefFile:
+    _ref_file_archive = rootDir + "dat/ref/customization_reference_fastas.tar.gz"
+
+    @classmethod
+    def _get_ref_file_from_archive(cls, ref_file: str) -> None:
+        """
+        Unzip the archive with all the reference fasta files.
+        """
+        with tf.open(cls._ref_file_archive, "r:*") as archive_file:
+            if not ref_file in archive_file.getnames():
+                raise ValueError(
+                    f"File {ref_file} is not part of the archive at "
+                    f"{cls._ref_file_archive}."
+                )
+
+            archive_file.extractall(
+                members=[archive_file.getmember(ref_file)],
+                path=os.path.dirname(cls._ref_file_archive),
+            )
+
+    @classmethod
+    def get_reference_path(cls, ref_name: str) -> str:
+        """
+        Get the path to one of the reference fasta files, ensuring the file is
+        present by unzipping the archive if it is not.
+        """
+        ref_path = zipped_ref_files[ref_name]
+
+        if not os.path.exists(ref_path):
+            cls._get_ref_file_from_archive(os.path.basename(ref_path))
+
+        return ref_path
+
+
+# -------------------------------------------------------------------------------
+
+
+def build_custom_reference(
+    subject, genotype, grouping, transcriptome_type, temp, outdir
+):
+
+    dummy_HLA_dict = SeqIO.to_dict(
+        SeqIO.parse(ZippedRefFile.get_reference_path("dummy_HLA_fa"), "fasta")
+    )
+
+    if transcriptome_type == "none":
         transcriptome = []
-    elif transcriptome_type == 'chr6':
-        transcriptome = list(SeqIO.parse(GRCh38_chr6, 'fasta'))
+    elif transcriptome_type == "chr6":
+        transcriptome = list(
+            SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38_chr6"), "fasta")
+        )
     else:
-        transcriptome = list(SeqIO.parse(GRCh38, 'fasta'))
-        
-    with open(HLA_json,'r') as file:
+        transcriptome = list(
+            SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38"), "fasta")
+        )
+
+    with open(HLA_json, "r") as file:
         HLA_transcripts = json.load(file)
     
     genes = {allele_id[:-1] for allele_id in genotype.keys()}
