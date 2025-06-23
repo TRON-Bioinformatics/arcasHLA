@@ -130,24 +130,18 @@ def build_custom_reference(
         for transcript in HLA_transcripts[gene]:
             transcriptome.append(dummy_HLA_dict[transcript])
 
-    # with open(allele_groups_p,'rb') as file:
-    #    groups = pickle.load(file)
     with open(allele_groups_json, "r") as file:
         groups_temp = json.load(file)
         groups = defaultdict(list)
         for k, v in groups_temp.items():
             groups[k] = set(v)
 
-    # with open(cDNA_p,'rb') as file:
-    #    cDNA = pickle.load(file)
     with open(cDNA_json, "r") as file:
         cDNA_temp = json.load(file)
         cDNA = defaultdict(list)
         for k, v in cDNA_temp.items():
             cDNA[k] = set(v)
 
-    # with open(cDNA_single_p,'rb') as file:
-    #    cDNA_single = pickle.load(file)
     with open(cDNA_single_json, "r") as file:
         cDNA_single = json.load(file)
 
@@ -235,8 +229,6 @@ def process_str_genotype(input_genotype, genes):
 
 
 def main(args: list[str]) -> None:
-    # with open(parameters, 'rb') as file:
-    #    genes, populations, databases = pickle.load(file)
     with open(parameters_json, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
