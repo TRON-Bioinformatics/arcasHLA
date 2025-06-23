@@ -307,8 +307,6 @@ def main(args: list[str]) -> None:
             input_genotype = json.load(file)
 
         genotype = process_json_genotype(input_genotype, genes)
-        print(genes)
-        print(genotype)
 
         build_custom_reference(
             subject, genotype, args.grouping, args.transcriptome, temp, outdir
