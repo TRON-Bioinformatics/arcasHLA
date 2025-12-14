@@ -8,25 +8,22 @@ import json
 import os
 
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
 @pytest.fixture(scope="session", autouse=True)
-def set_reference_version():
+def set_reference_version(repo_root):
     """
     Fetch IMGT/HLA database version 3.24.0 before test suite
     """
-    reference_cmd = f"{ROOT_DIR}/arcasHLA reference --version 3.24.0"
+    reference_cmd = f"{repo_root}/arcasHLA reference --version 3.24.0"
     subprocess.run(reference_cmd.split(), check=True)
 
 
 @pytest.fixture(scope="session")
-def extract_reads(tmp_path_factory):
+def extract_reads(repo_root, tmp_path_factory):
     """
     Extract reads before typing tests
     """
     output_dir = str(tmp_path_factory.mktemp("extracted_reads"))
-    extract_cmd = f"{ROOT_DIR}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
+    extract_cmd = f"{repo_root}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
     subprocess.run(extract_cmd.split(), check=True)
 
     # Provide the individual extracted reads files.
@@ -37,11 +34,11 @@ def extract_reads(tmp_path_factory):
     ]
 
 
-def test_whole_allele_typing(extract_reads, tmp_path):
+def test_whole_allele_typing(repo_root, extract_reads, tmp_path):
     output_dir = str(tmp_path)
 
     whole_typing_cmd = (
-        f"{ROOT_DIR}/arcasHLA genotype {extract_reads[0]} "
+        f"{repo_root}/arcasHLA genotype {extract_reads[0]} "
         f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o {output_dir} -t 8 -v"
     )
     subprocess.run(whole_typing_cmd.split(), check=True)
@@ -67,14 +64,14 @@ def test_whole_allele_typing(extract_reads, tmp_path):
     assert output == expected_output
 
 
-def test_partial_allele_typing(extract_reads, tmp_path):
+def test_partial_allele_typing(repo_root, extract_reads, tmp_path):
     output_dir = str(tmp_path)
 
     partial_typing_cmd = (
-        f"{ROOT_DIR}/arcasHLA partial {extract_reads[0]} "
+        f"{repo_root}/arcasHLA partial {extract_reads[0]} "
         f"{extract_reads[1]} "
         "-g A,B,C,DPB1,DQB1,DQA1,DRB1 "
-        f"-G {ROOT_DIR}/test/expected_output/test.genotype.json "
+        f"-G {repo_root}/test/expected_output/test.genotype.json "
         f"-o {output_dir} "
         "-t 8 "
         "-v"
