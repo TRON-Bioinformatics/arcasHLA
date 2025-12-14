@@ -8,7 +8,7 @@ format:
 	fd ".*\.md$$" -H --exec mdformat {}
 
 	# Python scripts.
-	black scripts/*.py
+	black scripts/*.py test/*.py
 
 	# Yaml files.
 	fd ".*\.ya?ml$$" -H --exclude "results" --exec yamlfmt {}
@@ -19,7 +19,7 @@ lint:
 	fd ".*\.md$$" -H --exec mdformat --check {}
 
 	# Python scripts.
-	black --check scripts/*.py
+	black --check scripts/*.py test/*.py
 
 	# Yaml files.
 	fd ".*\.ya?ml$$" -H --exclude "results" --exec yamlfmt --lint {}
