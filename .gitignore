@@ -3,6 +3,9 @@ clean_ref
 __pycache__/
 arcashla_latest.sif
 
+# IDE specific configs
+.vscode
+
 # Reference fasta files
 dat/ref/GRCh38.all.noHLA.fasta
 dat/ref/GRCh38.chr6.HLA.fasta
