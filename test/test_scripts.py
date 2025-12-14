@@ -5,10 +5,10 @@ Test the individual scripts for expected output.
 import pytest
 import subprocess
 import json
-from os.path import dirname, abspath
+import os
 
 
-ROOT_DIR = dirname(dirname(abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -20,19 +20,27 @@ def set_reference_version():
     subprocess.run(reference_cmd.split())
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def extract_reads():
     """
     Extract reads before typing tests
     """
-    extract_cmd = f"{ROOT_DIR}/arcasHLA extract test/test.bam -o test/output -t 8 -v"
+    output_dir = "test/output"
+    extract_cmd = f"{ROOT_DIR}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
     subprocess.run(extract_cmd.split())
 
+    # Provide the individual extracted reads files.
+    return [
+        os.path.join(output_dir, outfile)
+        for outfile in sorted(os.listdir(output_dir))
+        if outfile.endswith(".fq.gz") and outfile.startswith("test")
+    ]
 
-def test_whole_allele_typing():
+
+def test_whole_allele_typing(extract_reads):
     whole_typing_cmd = (
-        f"{ROOT_DIR}/arcasHLA genotype test/output/test.extracted.1.fq.gz "
-        f"test/output/test.extracted.2.fq.gz -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o test/output -t 8 -v"
+        f"{ROOT_DIR}/arcasHLA genotype {extract_reads[0]} "
+        f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o test/output -t 8 -v"
     )
     subprocess.run(whole_typing_cmd.split())
 
@@ -56,10 +64,10 @@ def test_whole_allele_typing():
     assert output == expected_output
 
 
-def test_partial_allele_typing():
+def test_partial_allele_typing(extract_reads):
     partial_typing_cmd = (
-        f"{ROOT_DIR}/arcasHLA partial test/output/test.extracted.1.fq.gz "
-        f"test/output/test.extracted.2.fq.gz -g A,B,C,DPB1,DQB1,DQA1,DRB1 -G test/output/test.genotype.json "
+        f"{ROOT_DIR}/arcasHLA partial {extract_reads[0]} "
+        f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -G test/output/test.genotype.json "
         f"-o test/output -t 8 -v"
     )
     subprocess.run(partial_typing_cmd.split())
