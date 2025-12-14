@@ -7,3 +7,9 @@ arcashla_latest.sif
 dat/ref/GRCh38.all.noHLA.fasta
 dat/ref/GRCh38.chr6.HLA.fasta
 dat/ref/GRCh38.chr6.noHLA.fasta
+
+# Test bam index
+test/*.bai
+
+# Test output
+test/output*
