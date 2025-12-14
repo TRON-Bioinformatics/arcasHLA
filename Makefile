@@ -24,5 +24,20 @@ lint:
 	# Yaml files.
 	fd ".*\.ya?ml$$" -H --exclude "results" --exec yamlfmt --lint {}
 
+# Requires conda-lock to be installed.
+lock:
+	# Plain environment.
+	conda lock \
+		--file environment.yml \
+		--lockfile environment.conda-lock.yml \
+		--platform linux-64
+
+	# Full dev environment.
+	conda lock \
+		--file environment.yml \
+		--file dev_environment.yml \
+		--lockfile dev_environment.conda-lock.yml \
+		--platform linux-64
+
 test:
 	pytest
