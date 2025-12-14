@@ -67,7 +67,9 @@ def test_whole_allele_typing(extract_reads):
 def test_partial_allele_typing(extract_reads):
     partial_typing_cmd = (
         f"{ROOT_DIR}/arcasHLA partial {extract_reads[0]} "
-        f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -G test/output/test.genotype.json "
+        f"{extract_reads[1]} "
+        "-g A,B,C,DPB1,DQB1,DQA1,DRB1 "
+        f"-G {ROOT_DIR}/test/expected_output/test.genotype.json "
         f"-o test/output -t 8 -v"
     )
     subprocess.run(partial_typing_cmd.split(), check=True)
