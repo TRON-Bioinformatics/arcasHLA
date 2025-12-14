@@ -23,6 +23,3 @@ dat/ref/hla_partial.p.json
 
 # Test bam index
 test/*.bai
-
-# Test output
-test/output*

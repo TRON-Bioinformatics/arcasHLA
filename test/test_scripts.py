@@ -21,11 +21,11 @@ def set_reference_version():
 
 
 @pytest.fixture(scope="session")
-def extract_reads():
+def extract_reads(tmp_path_factory):
     """
     Extract reads before typing tests
     """
-    output_dir = "test/output"
+    output_dir = str(tmp_path_factory.mktemp("extracted_reads"))
     extract_cmd = f"{ROOT_DIR}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
     subprocess.run(extract_cmd.split(), check=True)
 
@@ -37,14 +37,17 @@ def extract_reads():
     ]
 
 
-def test_whole_allele_typing(extract_reads):
+def test_whole_allele_typing(extract_reads, tmp_path):
+    output_dir = str(tmp_path)
+
     whole_typing_cmd = (
         f"{ROOT_DIR}/arcasHLA genotype {extract_reads[0]} "
-        f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o test/output -t 8 -v"
+        f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o {output_dir} -t 8 -v"
     )
     subprocess.run(whole_typing_cmd.split(), check=True)
 
-    output_file = f"{ROOT_DIR}/test/output/test.genotype.json"
+    output_file = f"{output_dir}/test.genotype.json"
+
     expected_output = {
         "A": ["A*01:01:01", "A*03:01:01"],
         "B": ["B*39:01:01", "B*07:02:01"],
@@ -64,17 +67,21 @@ def test_whole_allele_typing(extract_reads):
     assert output == expected_output
 
 
-def test_partial_allele_typing(extract_reads):
+def test_partial_allele_typing(extract_reads, tmp_path):
+    output_dir = str(tmp_path)
+
     partial_typing_cmd = (
         f"{ROOT_DIR}/arcasHLA partial {extract_reads[0]} "
         f"{extract_reads[1]} "
         "-g A,B,C,DPB1,DQB1,DQA1,DRB1 "
         f"-G {ROOT_DIR}/test/expected_output/test.genotype.json "
-        f"-o test/output -t 8 -v"
+        f"-o {output_dir} "
+        "-t 8 "
+        "-v"
     )
     subprocess.run(partial_typing_cmd.split(), check=True)
 
-    output_file = f"{ROOT_DIR}/test/output/test.partial_genotype.json"
+    output_file = f"{output_dir}/test.partial_genotype.json"
     expected_output = {
         "A": ["A*01:01:01", "A*03:01:01"],
         "B": ["B*07:02:01", "B*39:39:01"],
