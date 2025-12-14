@@ -17,7 +17,7 @@ def set_reference_version():
     Fetch IMGT/HLA database version 3.24.0 before test suite
     """
     reference_cmd = f"{ROOT_DIR}/arcasHLA reference --version 3.24.0"
-    subprocess.run(reference_cmd.split())
+    subprocess.run(reference_cmd.split(), check=True)
 
 
 @pytest.fixture(scope="session")
@@ -27,7 +27,7 @@ def extract_reads():
     """
     output_dir = "test/output"
     extract_cmd = f"{ROOT_DIR}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
-    subprocess.run(extract_cmd.split())
+    subprocess.run(extract_cmd.split(), check=True)
 
     # Provide the individual extracted reads files.
     return [
@@ -42,7 +42,7 @@ def test_whole_allele_typing(extract_reads):
         f"{ROOT_DIR}/arcasHLA genotype {extract_reads[0]} "
         f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -o test/output -t 8 -v"
     )
-    subprocess.run(whole_typing_cmd.split())
+    subprocess.run(whole_typing_cmd.split(), check=True)
 
     output_file = f"{ROOT_DIR}/test/output/test.genotype.json"
     expected_output = {
@@ -70,7 +70,7 @@ def test_partial_allele_typing(extract_reads):
         f"{extract_reads[1]} -g A,B,C,DPB1,DQB1,DQA1,DRB1 -G test/output/test.genotype.json "
         f"-o test/output -t 8 -v"
     )
-    subprocess.run(partial_typing_cmd.split())
+    subprocess.run(partial_typing_cmd.split(), check=True)
 
     output_file = f"{ROOT_DIR}/test/output/test.partial_genotype.json"
     expected_output = {
