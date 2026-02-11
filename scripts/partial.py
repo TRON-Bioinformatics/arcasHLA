@@ -52,11 +52,11 @@ __date__ = "2021-01-27"
 #   Paths and filenames
 # -------------------------------------------------------------------------------
 
-rootDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-partial_json = rootDir + "dat/ref/hla_partial.p.json"
-partial_idx = rootDir + "dat/ref/hla_partial.idx"
-hla_freq = rootDir + "dat/info/hla_freq.tsv"
+PARTIAL_JSON = ROOT_DIR + "dat/ref/hla_partial.p.json"
+PARTIAL_IDX = ROOT_DIR + "dat/ref/hla_partial.idx"
+HLA_FREQ = ROOT_DIR + "dat/info/hla_freq.tsv"
 
 # -------------------------------------------------------------------------------
 # Process transcript assembly output
@@ -355,7 +355,7 @@ def arg_check_threshold(parser, arg):
 
 if __name__ == "__main__":
 
-    with open(rootDir + "dat/info/parameters.json", "r") as file:
+    with open(ROOT_DIR + "dat/info/parameters.json", "r") as file:
         genes, populations, databases = json.load(file)
         genes = set(genes)
         populations = set(populations)
@@ -538,7 +538,7 @@ if __name__ == "__main__":
     log.info(f"[log] Sample: %s", sample)
     log.info(f"[log] Input file(s): %s", ", ".join(args.file))
 
-    prior = pd.read_csv(hla_freq, delimiter="\t")
+    prior = pd.read_csv(HLA_FREQ, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
@@ -549,7 +549,7 @@ if __name__ == "__main__":
     #    reference_info = pickle.load(file)
     #    (commithash, (gene_set, allele_idx, exon_idx,
     #        lengths, partial_exons, partial_alleles)) = reference_info
-    with open(partial_json, "r") as file:
+    with open(PARTIAL_JSON, "r") as file:
         reference_info = json.load(file)
         (
             commithash,
@@ -573,7 +573,7 @@ if __name__ == "__main__":
         alignment_info = get_alignment(
             args.file,
             sample,
-            partial_idx,
+            PARTIAL_IDX,
             reference_info,
             outdir,
             temp,

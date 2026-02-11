@@ -43,9 +43,9 @@ __date__ = "2022-01-27"
 #   Paths and fileames
 # -------------------------------------------------------------------------------
 
-rootDir = dirname(realpath(__file__)) + "/../"
+ROOT_DIR = dirname(realpath(__file__)) + "/../"
 
-hla_convert_json = rootDir + "dat/ref/hla.convert.json"
+HLA_CONVERT_JSON = ROOT_DIR + "dat/ref/hla.convert.json"
 
 # -------------------------------------------------------------------------------
 
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     # p_group, g_group = pickle.load(open(hla_convert,'rb'))
     # to do, test this
-    with open(hla_convert_json, "r") as file:
+    with open(HLA_CONVERT_JSON, "r") as file:
         p_group, g_group = json.load(file)
 
     # Check input resolution

@@ -50,9 +50,9 @@ __version__ = "0.4.0"
 __date__ = "2022-01-27"
 
 # -------------------------------------------------------------------------------
-rootDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-parameters_json = rootDir + "dat/info/parameters.json"
+PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
 
 
 # -------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # with open(parameters, 'rb') as file:
     #    genes, populations, databases = pickle.load(file)
-    with open(parameters_json, "r") as file:
+    with open(PARAMETERS_JSON, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
         populations = set(populations)

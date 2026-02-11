@@ -52,7 +52,7 @@ __date__ = "2022-01-27"
 #   Paths and filenames
 # -------------------------------------------------------------------------------
 
-rootDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
 # -----------------------------------------------------------------------------
 # Process and align FASTQ input
