@@ -53,12 +53,12 @@ __date__ = "2022-01-27"
 #   Paths and filenames
 # -------------------------------------------------------------------------------
 
-rootDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-hla_json = rootDir + "dat/ref/hla.p.json"
-hla_idx = rootDir + "dat/ref/hla.idx"
-hla_freq = rootDir + "dat/info/hla_freq.tsv"
-parameters_json = rootDir + "dat/info/parameters.json"
+HLA_JSON = ROOT_DIR + "dat/ref/hla.p.json"
+HLA_IDX = ROOT_DIR + "dat/ref/hla.idx"
+HLA_FREQ = ROOT_DIR + "dat/info/hla_freq.tsv"
+PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
 
 # -----------------------------------------------------------------------------
 # Genotype
@@ -570,7 +570,7 @@ def arg_check_threshold(parser, arg):
 
 if __name__ == "__main__":
 
-    with open(parameters_json, "r") as file:
+    with open(PARAMETERS_JSON, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
         populations = set(populations)
@@ -767,11 +767,11 @@ if __name__ == "__main__":
     log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(args.file))
 
     # Load HLA frequencies
-    prior = pd.read_csv(hla_freq, delimiter="\t")
+    prior = pd.read_csv(HLA_FREQ, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
-    check_path(rootDir + "dat/ref")
+    check_path(ROOT_DIR + "dat/ref")
     check_ref()
 
     # Loads reference information
@@ -779,7 +779,7 @@ if __name__ == "__main__":
     #    reference_info = pickle.load(file)
     #    (commithash,(gene_set, allele_idx,
     #     lengths, gene_length)) = reference_info
-    with open(hla_json, "r") as file:
+    with open(HLA_JSON, "r") as file:
         reference_info = json.load(file)
         (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
 
@@ -792,7 +792,7 @@ if __name__ == "__main__":
         alignment_info = get_alignment(
             args.file,
             sample,
-            hla_idx,
+            HLA_IDX,
             reference_info,
             outdir,
             temp,

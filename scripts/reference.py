@@ -55,21 +55,21 @@ __date__ = "2022-01-27"
 #   Paths and fileames
 # -------------------------------------------------------------------------------
 
-rootDir = dirname(realpath(__file__)) + "/../"
+ROOT_DIR = dirname(realpath(__file__)) + "/../"
 
-IMGTHLA = rootDir + "dat/IMGTHLA/"
-IMGTHLA_git = "https://github.com/ANHIG/IMGTHLA.git"
-hla_dat = rootDir + "dat/IMGTHLA/hla.dat"
-hla_nom_g = rootDir + "dat/IMGTHLA/wmda/hla_nom_g.txt"
-hla_nom_p = rootDir + "dat/IMGTHLA/wmda/hla_nom_p.txt"
-hla_convert_json = rootDir + "dat/ref/hla.convert.json"
-hla_fa = rootDir + "dat/ref/hla.fasta"
-partial_fa = rootDir + "dat/ref/hla_partial.fasta"
-hla_json = rootDir + "dat/ref/hla.p.json"
-partial_json = rootDir + "dat/ref/hla_partial.p.json"
-hla_idx = rootDir + "dat/ref/hla.idx"
-partial_idx = rootDir + "dat/ref/hla_partial.idx"
-parameters_json = rootDir + "dat/info/parameters.json"
+IMGTHLA = ROOT_DIR + "dat/IMGTHLA/"
+IMGTHLA_GIT = "https://github.com/ANHIG/IMGTHLA.git"
+HLA_DAT = ROOT_DIR + "dat/IMGTHLA/hla.dat"
+HLA_NOM_G = ROOT_DIR + "dat/IMGTHLA/wmda/hla_nom_g.txt"
+HLA_NOM_P = ROOT_DIR + "dat/IMGTHLA/wmda/hla_nom_p.txt"
+HLA_CONVERT_JSON = ROOT_DIR + "dat/ref/hla.convert.json"
+HLA_FA = ROOT_DIR + "dat/ref/hla.fasta"
+PARTIAL_FA = ROOT_DIR + "dat/ref/hla_partial.fasta"
+HLA_JSON = ROOT_DIR + "dat/ref/hla.p.json"
+PARTIAL_JSON = ROOT_DIR + "dat/ref/hla_partial.p.json"
+HLA_IDX = ROOT_DIR + "dat/ref/hla.idx"
+PARTIAL_IDX = ROOT_DIR + "dat/ref/hla_partial.idx"
+PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
 
 
 # -------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ def get_mode(lengths):
 def check_ref():
     """Check if IMGTHLA and constructed HLA references exist."""
 
-    if not isfile(hla_dat):
+    if not isfile(HLA_DAT):
         fetch_hla_dat()
         build_convert(False)
         build_fasta()
@@ -94,14 +94,14 @@ def fetch_hla_dat():
     if isdir(IMGTHLA):
         run_command(["rm", "-rf", IMGTHLA])
 
-    command = ["git", "clone", IMGTHLA_git, IMGTHLA]
+    command = ["git", "clone", IMGTHLA_GIT, IMGTHLA]
     run_command(command, "[reference] Cloning IMGT/HLA database:")
 
 
 def checkout_version(commithash, verbose=True):
     """Checks out a specific IMGTHLA github version given a commithash."""
 
-    if not isfile(hla_dat):
+    if not isfile(HLA_DAT):
         fetch_hla_dat()
 
     command = ["git", "-C", IMGTHLA, "checkout", "-f", commithash]
@@ -139,7 +139,7 @@ def process_hla_dat():
     complete_2fields = set()
     partial_alleles = set()
 
-    with open(hla_dat, "r", encoding="UTF-8") as file:
+    with open(HLA_DAT, "r", encoding="UTF-8") as file:
         lines = file.read().splitlines()
 
     # Check if hla.dat failed to download
@@ -495,9 +495,9 @@ def build_fasta():
         seq_out,
         [gene_set, allele_idx, lengths, gene_length],
         # hla_fa, hla_idx, hla_p,
-        hla_fa,
-        hla_idx,
-        hla_json,
+        HLA_FA,
+        HLA_IDX,
+        HLA_JSON,
         "complete",
     )
 
@@ -508,9 +508,9 @@ def build_fasta():
         seq_out,
         [gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles],
         # partial_fa, partial_idx, partial_p,
-        partial_fa,
-        partial_idx,
-        partial_json,
+        PARTIAL_FA,
+        PARTIAL_IDX,
+        PARTIAL_JSON,
         "partial",
     )
 
@@ -524,13 +524,13 @@ def build_convert(reset=False):
         commit = hla_dat_version()
         checkout_version("origin", False)
 
-    p_group = process_hla_nom(hla_nom_p)
-    g_group = process_hla_nom(hla_nom_g)
+    p_group = process_hla_nom(HLA_NOM_P)
+    g_group = process_hla_nom(HLA_NOM_G)
 
     # with open(hla_convert, 'wb') as file:
     #    pickle.dump([p_group,g_group], file)
     # todo, test this:
-    with open(hla_convert_json, "w") as file:
+    with open(HLA_CONVERT_JSON, "w") as file:
         json.dump([p_group, g_group], file)
 
     if reset:
@@ -555,7 +555,7 @@ if __name__ == "__main__":
     #    temp1, temp2, versions = pickle.load(file)
     # with open(parameters_json, 'w') as file:
     #    json.dump([list(temp1),list(temp2),versions],file)
-    with open(parameters_json, "r") as file:
+    with open(PARAMETERS_JSON, "r") as file:
         _, _, versions = json.load(file)
 
     parser = argparse.ArgumentParser(
@@ -610,7 +610,7 @@ if __name__ == "__main__":
     log.info("")
     hline()
 
-    check_path(rootDir + "dat/ref")
+    check_path(ROOT_DIR + "dat/ref")
 
     if args.update:
         log.info("[reference] Updating HLA reference")
