@@ -40,7 +40,7 @@ from textwrap import wrap
 from collections import Counter, defaultdict
 from itertools import combinations
 
-from reference import check_ref
+from reference import ensure_ref_exists
 from arcas_utilities import *
 from align import *
 
@@ -772,7 +772,7 @@ if __name__ == "__main__":
 
     # Checks if HLA reference exists
     check_path(ROOT_DIR + "dat/ref")
-    check_ref()
+    ensure_ref_exists()
 
     # Loads reference information
     # with open(hla_p, 'rb') as file:

@@ -79,16 +79,16 @@ def get_mode(lengths):
     return stats.mode(lengths)[0]
 
 
-def check_ref():
+def ensure_ref_exists():
     """Check if IMGTHLA and constructed HLA references exist."""
 
     if not isfile(HLA_DAT):
-        fetch_hla_dat()
-        build_convert(False)
-        build_fasta()
+        force_clone_imgt_hla_db()
+        create_conversion_tables(False)
+        create_fasta_ref_from_hla_allele_data()
 
 
-def fetch_hla_dat():
+def force_clone_imgt_hla_db():
     """Clones IMGTHLA github to database."""
 
     if isdir(IMGTHLA):
@@ -98,11 +98,11 @@ def fetch_hla_dat():
     run_command(command, "[reference] Cloning IMGT/HLA database:")
 
 
-def checkout_version(commithash, verbose=True):
+def checkout_imgt_hla_db(commithash, verbose=True):
     """Checks out a specific IMGTHLA github version given a commithash."""
 
     if not isfile(HLA_DAT):
-        fetch_hla_dat()
+        force_clone_imgt_hla_db()
 
     command = ["git", "-C", IMGTHLA, "checkout", "-f", commithash]
     if verbose:
@@ -111,7 +111,7 @@ def checkout_version(commithash, verbose=True):
         run_command(command)
 
 
-def hla_dat_version(print_version=False):
+def hla_dat_commit(print_version=False):
     """Returns commithash of downloaded IMGTHLA database."""
 
     results = run_command(["git", "-C", IMGTHLA, "rev-parse HEAD"])
@@ -122,7 +122,7 @@ def hla_dat_version(print_version=False):
     return commit[:-1]
 
 
-def process_hla_dat():
+def parse_hla_allele_data():
     """Processes IMGTHLA database, returning HLA sequences, exon locations,
     lists of complete and partial alleles and possible exon combinations.
     """
@@ -242,7 +242,7 @@ def process_hla_dat():
     )
 
 
-def process_hla_nom(hla_nom):
+def parse_hla_nomenclature(hla_nom):
     """Processes nomenclature files for arcasHLA convert."""
     allele_to_group = defaultdict(dict)
 
@@ -292,7 +292,7 @@ def write_reference(sequences, info, fasta, idx, database, type):
     with open(fasta, "w") as file:
         SeqIO.write(sequences, file, "fasta")
 
-    commithash = hla_dat_version()
+    commithash = hla_dat_commit()
     # with open(database,'wb') as file:
     #    pickle.dump([commithash,info],file)
     with open(database, "w") as file:
@@ -348,11 +348,11 @@ def get_exon_combinations():
     return exon_combinations
 
 
-def build_fasta():
+def create_fasta_ref_from_hla_allele_data():
     """Constructs HLA reference from processed sequences and exon locations."""
 
     log.info("[reference] IMGT/HLA database version:\n")
-    hla_dat_version(True)
+    hla_dat_commit(True)
 
     log.info("[reference] Processing IMGT/HLA database")
 
@@ -468,7 +468,7 @@ def build_fasta():
         utrs,
         exons,
         final_exon_length,
-    ) = process_hla_dat()
+    ) = parse_hla_allele_data()
 
     exon_combinations = get_exon_combinations()
 
@@ -515,17 +515,17 @@ def build_fasta():
     )
 
 
-def build_convert(reset=False):
+def create_conversion_tables(reset=False):
     """Creates conversion tables for arcasHLA convert."""
 
     log.info("[reference] Building nomenclature conversion tables.")
 
     if reset:
-        commit = hla_dat_version()
-        checkout_version("origin", False)
+        commit = hla_dat_commit()
+        checkout_imgt_hla_db("origin", False)
 
-    p_group = process_hla_nom(HLA_NOM_P)
-    g_group = process_hla_nom(HLA_NOM_G)
+    p_group = parse_hla_nomenclature(HLA_NOM_P)
+    g_group = parse_hla_nomenclature(HLA_NOM_G)
 
     # with open(hla_convert, 'wb') as file:
     #    pickle.dump([p_group,g_group], file)
@@ -534,7 +534,7 @@ def build_convert(reset=False):
         json.dump([p_group, g_group], file)
 
     if reset:
-        checkout_version(commit, False)
+        checkout_imgt_hla_db(commit, False)
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -614,29 +614,29 @@ if __name__ == "__main__":
 
     if args.update:
         log.info("[reference] Updating HLA reference")
-        checkout_version("origin")
-        build_convert(False)
-        build_fasta()
+        checkout_imgt_hla_db("origin")
+        create_conversion_tables(False)
+        create_fasta_ref_from_hla_allele_data()
 
     elif args.rebuild:
-        build_convert()
-        build_fasta()
+        create_conversion_tables()
+        create_fasta_ref_from_hla_allele_data()
 
     elif args.version:
         if args.version not in versions:
             sys.exit("[reference] Error: invalid version.")
-        checkout_version(versions[args.version])
-        build_fasta()
-        build_convert()
+        checkout_imgt_hla_db(versions[args.version])
+        create_fasta_ref_from_hla_allele_data()
+        create_conversion_tables()
 
     elif args.commit:
-        checkout_version(args.commit)
-        build_fasta()
-        build_convert()
+        checkout_imgt_hla_db(args.commit)
+        create_fasta_ref_from_hla_allele_data()
+        create_conversion_tables()
 
     else:
-        check_ref()
-        hla_dat_version(True)
+        ensure_ref_exists()
+        hla_dat_commit(True)
 
     hline()
     log.info("")

@@ -41,7 +41,7 @@ from textwrap import wrap
 from collections import Counter, defaultdict
 from itertools import combinations
 
-from reference import check_ref
+from reference import ensure_ref_exists
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------

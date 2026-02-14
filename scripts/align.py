@@ -40,7 +40,7 @@ from textwrap import wrap
 from collections import Counter, defaultdict
 from itertools import combinations
 
-from reference import check_ref, get_exon_combinations
+from reference import ensure_ref_exists, get_exon_combinations
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
