@@ -38,7 +38,7 @@ from collections import Counter, defaultdict
 from textwrap import wrap
 from datetime import date
 
-from reference import check_ref
+from reference import ensure_ref_exists
 from arcas_utilities import *
 from align import *
 from genotype import expectation_maximization
@@ -542,7 +542,7 @@ if __name__ == "__main__":
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
-    check_ref()
+    ensure_ref_exists()
 
     # Loads reference information
     # with open(partial_p, 'rb') as file:
