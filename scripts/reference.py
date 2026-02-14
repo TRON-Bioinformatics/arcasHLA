@@ -34,7 +34,6 @@ import numpy as np
 
 from argparse import RawTextHelpFormatter
 from os.path import isfile, isdir, dirname, realpath
-from subprocess import PIPE, run
 
 from textwrap import wrap
 from scipy import stats
@@ -520,8 +519,9 @@ def create_conversion_tables(reset=False):
 
     log.info("[reference] Building nomenclature conversion tables.")
 
+    commit = hla_dat_commit()
+
     if reset:
-        commit = hla_dat_commit()
         checkout_imgt_hla_db("origin", False)
 
     p_group = parse_hla_nomenclature(HLA_NOM_P)
@@ -538,10 +538,10 @@ def create_conversion_tables(reset=False):
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.int64):
-            return int(obj)
-        return json.JSONEncoder.default(self, obj)
+    def default(self, o):
+        if isinstance(o, np.int64):
+            return int(o)
+        return json.JSONEncoder.default(self, o)
 
 
 # -------------------------------------------------------------------------------
