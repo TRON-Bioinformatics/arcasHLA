@@ -32,21 +32,13 @@ import pickle
 from argparse import RawTextHelpFormatter
 from os.path import isfile, isdir, dirname, realpath
 
+import config
 from arcas_utilities import check_path, process_allele
 
 # -------------------------------------------------------------------------------
 
 __version__ = "0.4.0"
 __date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-#   Paths and fileames
-# -------------------------------------------------------------------------------
-
-ROOT_DIR = dirname(realpath(__file__)) + "/../"
-
-REF_DIR = ROOT_DIR + "dat/ref/"
-HLA_CONVERT_JSON = REF_DIR + "hla.convert.json"
 
 # -------------------------------------------------------------------------------
 
@@ -168,7 +160,7 @@ if __name__ == "__main__":
 
     # p_group, g_group = pickle.load(open(hla_convert,'rb'))
     # to do, test this
-    with open(HLA_CONVERT_JSON, "r") as file:
+    with open(config.hla_convert_json, "r") as file:
         p_group, g_group = json.load(file)
 
     # Check input resolution

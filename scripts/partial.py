@@ -38,6 +38,7 @@ from collections import Counter, defaultdict
 from textwrap import wrap
 from datetime import date
 
+import config
 from reference import ensure_ref_exists
 from arcas_utilities import *
 from align import *
@@ -47,20 +48,6 @@ from genotype import expectation_maximization
 
 __version__ = "0.4.0"
 __date__ = "2021-01-27"
-
-# -------------------------------------------------------------------------------
-#   Paths and filenames
-# -------------------------------------------------------------------------------
-
-ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
-
-REF_DIR = ROOT_DIR + "dat/ref/"
-PARTIAL_JSON = REF_DIR + "hla_partial.p.json"
-PARTIAL_IDX = REF_DIR + "hla_partial.idx"
-
-INFO_DIR = ROOT_DIR + "dat/info/"
-HLA_FREQ = INFO_DIR + "hla_freq.tsv"
-PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 # -------------------------------------------------------------------------------
 # Process transcript assembly output
@@ -359,7 +346,7 @@ def arg_check_threshold(parser, arg):
 
 if __name__ == "__main__":
 
-    with open(PARAMETERS_JSON, "r") as file:
+    with open(config.parameters_json, "r") as file:
         genes, populations, databases = json.load(file)
         genes = set(genes)
         populations = set(populations)
@@ -542,7 +529,7 @@ if __name__ == "__main__":
     log.info(f"[log] Sample: %s", sample)
     log.info(f"[log] Input file(s): %s", ", ".join(args.file))
 
-    prior = pd.read_csv(HLA_FREQ, delimiter="\t")
+    prior = pd.read_csv(config.hla_freq, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
@@ -553,7 +540,7 @@ if __name__ == "__main__":
     #    reference_info = pickle.load(file)
     #    (commithash, (gene_set, allele_idx, exon_idx,
     #        lengths, partial_exons, partial_alleles)) = reference_info
-    with open(PARTIAL_JSON, "r") as file:
+    with open(config.partial_json, "r") as file:
         reference_info = json.load(file)
         (
             commithash,
@@ -577,7 +564,7 @@ if __name__ == "__main__":
         alignment_info = get_alignment(
             args.file,
             sample,
-            PARTIAL_IDX,
+            config.partial_idx,
             reference_info,
             outdir,
             temp,

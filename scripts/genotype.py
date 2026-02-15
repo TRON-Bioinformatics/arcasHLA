@@ -40,6 +40,7 @@ from textwrap import wrap
 from collections import Counter, defaultdict
 from itertools import combinations
 
+import config
 from reference import ensure_ref_exists
 from arcas_utilities import *
 from align import *
@@ -48,20 +49,6 @@ from align import *
 
 __version__ = "0.4.0"
 __date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-#   Paths and filenames
-# -------------------------------------------------------------------------------
-
-ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
-
-REF_DIR = ROOT_DIR + "dat/ref/"
-HLA_JSON = REF_DIR + "hla.p.json"
-HLA_IDX = REF_DIR + "hla.idx"
-
-INFO_DIR = ROOT_DIR + "dat/info/"
-HLA_FREQ = INFO_DIR + "hla_freq.tsv"
-PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 # -----------------------------------------------------------------------------
 # Genotype
@@ -573,7 +560,7 @@ def arg_check_threshold(parser, arg):
 
 if __name__ == "__main__":
 
-    with open(PARAMETERS_JSON, "r") as file:
+    with open(config.parameters_json, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
         populations = set(populations)
@@ -770,11 +757,11 @@ if __name__ == "__main__":
     log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(args.file))
 
     # Load HLA frequencies
-    prior = pd.read_csv(HLA_FREQ, delimiter="\t")
+    prior = pd.read_csv(config.hla_freq, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
-    check_path(REF_DIR)
+    check_path(config.ref_dir)
     ensure_ref_exists()
 
     # Loads reference information
@@ -782,7 +769,7 @@ if __name__ == "__main__":
     #    reference_info = pickle.load(file)
     #    (commithash,(gene_set, allele_idx,
     #     lengths, gene_length)) = reference_info
-    with open(HLA_JSON, "r") as file:
+    with open(config.hla_json, "r") as file:
         reference_info = json.load(file)
         (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
 
@@ -795,7 +782,7 @@ if __name__ == "__main__":
         alignment_info = get_alignment(
             args.file,
             sample,
-            HLA_IDX,
+            config.hla_idx,
             reference_info,
             outdir,
             temp,

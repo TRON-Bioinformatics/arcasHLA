@@ -43,37 +43,13 @@ from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+import config
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
 
 __version__ = "0.4.0"
 __date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-#   Paths and fileames
-# -------------------------------------------------------------------------------
-
-ROOT_DIR = dirname(realpath(__file__)) + "/../"
-
-IMGTHLA_GIT = "https://github.com/ANHIG/IMGTHLA.git"
-IMGTHLA = ROOT_DIR + "dat/IMGTHLA/"
-HLA_DAT = IMGTHLA + "hla.dat"
-HLA_NOM_G = IMGTHLA + "wmda/hla_nom_g.txt"
-HLA_NOM_P = IMGTHLA + "wmda/hla_nom_p.txt"
-
-REF_DIR =  ROOT_DIR + "dat/ref/"
-HLA_CONVERT_JSON = REF_DIR + "hla.convert.json"
-HLA_FA = REF_DIR + "hla.fasta"
-PARTIAL_FA = REF_DIR + "hla_partial.fasta"
-HLA_JSON = REF_DIR + "hla.p.json"
-PARTIAL_JSON = REF_DIR + "hla_partial.p.json"
-HLA_IDX = REF_DIR + "hla.idx"
-PARTIAL_IDX = REF_DIR + "hla_partial.idx"
-
-INFO_DIR = ROOT_DIR + "dat/info/"
-PARAMETERS_JSON = ROOT_DIR + "parameters.json"
-
 
 # -------------------------------------------------------------------------------
 #   Fetch and process IMGTHLA database
@@ -85,7 +61,7 @@ def get_mode(lengths):
 def ensure_ref_exists():
     """Check if IMGTHLA and constructed HLA references exist."""
 
-    if not isfile(HLA_DAT):
+    if not isfile(config.hla_dat):
         force_clone_imgt_hla_db()
         create_conversion_tables(False)
         create_fasta_ref_from_hla_allele_data()
@@ -94,20 +70,20 @@ def ensure_ref_exists():
 def force_clone_imgt_hla_db():
     """Clones IMGTHLA github to database."""
 
-    if isdir(IMGTHLA):
-        run_command(["rm", "-rf", IMGTHLA])
+    if isdir(config.imgthla_dir):
+        run_command(["rm", "-rf", config.imgthla_dir])
 
-    command = ["git", "clone", IMGTHLA_GIT, IMGTHLA]
+    command = ["git", "clone", config.imgthla_git, config.imgthla_dir]
     run_command(command, "[reference] Cloning IMGT/HLA database:")
 
 
 def checkout_imgt_hla_db(commithash, verbose=True):
     """Checks out a specific IMGTHLA github version given a commithash."""
 
-    if not isfile(HLA_DAT):
+    if not isfile(config.hla_dat):
         force_clone_imgt_hla_db()
 
-    command = ["git", "-C", IMGTHLA, "checkout", "-f", commithash]
+    command = ["git", "-C", config.imgthla_dir, "checkout", "-f", commithash]
     if verbose:
         run_command(command, "[reference] Checking out IMGT/HLA:")
     else:
@@ -117,7 +93,7 @@ def checkout_imgt_hla_db(commithash, verbose=True):
 def hla_dat_commit(print_version=False):
     """Returns commithash of downloaded IMGTHLA database."""
 
-    results = run_command(["git", "-C", IMGTHLA, "rev-parse HEAD"])
+    results = run_command(["git", "-C", config.imgthla_dir, "rev-parse HEAD"])
     commit = results.stdout.decode()
     if print_version:
         log.info(commit)
@@ -142,7 +118,7 @@ def parse_hla_allele_data():
     complete_2fields = set()
     partial_alleles = set()
 
-    with open(HLA_DAT, "r", encoding="UTF-8") as file:
+    with open(config.hla_dat, "r", encoding="UTF-8") as file:
         lines = file.read().splitlines()
 
     # Check if hla.dat failed to download
@@ -498,9 +474,9 @@ def create_fasta_ref_from_hla_allele_data():
         seq_out,
         [gene_set, allele_idx, lengths, gene_length],
         # hla_fa, hla_idx, hla_p,
-        HLA_FA,
-        HLA_IDX,
-        HLA_JSON,
+        config.hla_fa,
+        config.hla_idx,
+        config.hla_json,
         "complete",
     )
 
@@ -511,9 +487,9 @@ def create_fasta_ref_from_hla_allele_data():
         seq_out,
         [gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles],
         # partial_fa, partial_idx, partial_p,
-        PARTIAL_FA,
-        PARTIAL_IDX,
-        PARTIAL_JSON,
+        config.partial_fa,
+        config.partial_idx,
+        config.partial_json,
         "partial",
     )
 
@@ -528,13 +504,13 @@ def create_conversion_tables(reset=False):
     if reset:
         checkout_imgt_hla_db("origin", False)
 
-    p_group = parse_hla_nomenclature(HLA_NOM_P)
-    g_group = parse_hla_nomenclature(HLA_NOM_G)
+    p_group = parse_hla_nomenclature(config.hla_nom_p)
+    g_group = parse_hla_nomenclature(config.hla_nom_g)
 
     # with open(hla_convert, 'wb') as file:
     #    pickle.dump([p_group,g_group], file)
     # todo, test this:
-    with open(HLA_CONVERT_JSON, "w") as file:
+    with open(config.hla_convert_json, "w") as file:
         json.dump([p_group, g_group], file)
 
     if reset:
@@ -559,7 +535,7 @@ if __name__ == "__main__":
     #    temp1, temp2, versions = pickle.load(file)
     # with open(parameters_json, 'w') as file:
     #    json.dump([list(temp1),list(temp2),versions],file)
-    with open(PARAMETERS_JSON, "r") as file:
+    with open(config.parameters_json, "r") as file:
         _, _, versions = json.load(file)
 
     parser = argparse.ArgumentParser(
@@ -614,7 +590,7 @@ if __name__ == "__main__":
     log.info("")
     hline()
 
-    check_path(REF_DIR)
+    check_path(config.ref_dir)
 
     if args.update:
         log.info("[reference] Updating HLA reference")
