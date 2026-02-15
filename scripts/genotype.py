@@ -24,20 +24,17 @@
 
 import os
 import sys
-import re
 import json
-import pickle
 import argparse
 import logging as log
 
-import numpy as np
 import math
 import pandas as pd
 
 from datetime import date
 from argparse import RawTextHelpFormatter
 from textwrap import wrap
-from collections import Counter, defaultdict
+from collections import defaultdict
 from itertools import combinations
 
 import config

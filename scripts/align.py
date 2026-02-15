@@ -22,25 +22,15 @@
 #   along with arcasHLA.  If not, see <https://www.gnu.org/licenses/>.
 # -------------------------------------------------------------------------------
 
-import os
 import sys
-import re
 import json
 import pickle
-import argparse
 import logging as log
 
 import numpy as np
-import math
-import pandas as pd
+from collections import defaultdict
 
-from datetime import date
-from argparse import RawTextHelpFormatter
-from textwrap import wrap
-from collections import Counter, defaultdict
-from itertools import combinations
-
-from reference import ensure_ref_exists, get_exon_combinations
+from reference import get_exon_combinations
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------

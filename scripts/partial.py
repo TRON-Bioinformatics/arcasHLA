@@ -26,7 +26,6 @@ import os
 import sys
 import re
 import json
-import pickle
 import argparse
 import pandas as pd
 import logging as log
@@ -34,7 +33,7 @@ import logging as log
 
 from argparse import RawTextHelpFormatter
 from itertools import combinations
-from collections import Counter, defaultdict
+from collections import defaultdict
 from textwrap import wrap
 from datetime import date
 

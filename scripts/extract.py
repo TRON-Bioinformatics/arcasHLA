@@ -24,8 +24,6 @@
 
 import os
 import sys
-import re
-import pickle
 import json
 import argparse
 import logging as log

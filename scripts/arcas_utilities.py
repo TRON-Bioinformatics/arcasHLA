@@ -26,7 +26,7 @@ import os
 import re
 import logging as log
 import uuid
-from subprocess import PIPE, STDOUT, run
+from subprocess import PIPE, run
 
 # -------------------------------------------------------------------------------
 
