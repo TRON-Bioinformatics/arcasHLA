@@ -35,11 +35,6 @@ from arcas_utilities import check_path
 
 # -------------------------------------------------------------------------------
 
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-
 
 def get_paths(indir):
     """Get all file paths that match arcasHLA output."""

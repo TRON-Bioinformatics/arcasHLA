@@ -43,10 +43,6 @@ from arcas_utilities import *
 from align import *
 from genotype import expectation_maximization
 
-# -------------------------------------------------------------------------------
-
-__version__ = "0.4.0"
-__date__ = "2021-01-27"
 
 # -------------------------------------------------------------------------------
 # Process transcript assembly output

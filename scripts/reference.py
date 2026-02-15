@@ -46,10 +46,6 @@ from Bio.SeqRecord import SeqRecord
 import config
 from arcas_utilities import *
 
-# -------------------------------------------------------------------------------
-
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
 
 # -------------------------------------------------------------------------------
 #   Fetch and process IMGTHLA database
