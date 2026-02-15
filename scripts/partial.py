@@ -427,8 +427,8 @@ def arg_check_genotype(parser, arg):
 
 def arg_check_genes(parser, arg):
     if arg.lower() == "all":
-        return sorted(genes)
-    input_genes = {gene.upper() for gene in arg.split(",")} & genes
+        return sorted(config.genes)
+    input_genes = {gene.upper() for gene in arg.split(",")} & config.genes
     if not input_genes:
         parser.error("The gene list %s is invalid." % arg)
     return sorted(input_genes)
@@ -437,7 +437,7 @@ def arg_check_genes(parser, arg):
 def arg_check_population(parser, arg):
     if arg.lower() == "none":
         return None
-    if arg not in populations:
+    if arg not in config.populations:
         parser.error("The population %s is invalid." % arg)
     return arg
 
@@ -473,12 +473,6 @@ def arg_check_threshold(parser, arg):
 
 
 if __name__ == "__main__":
-
-    with open(config.parameters_json, "r") as file:
-        genes, populations, databases = json.load(file)
-        genes = set(genes)
-        populations = set(populations)
-
     parser = argparse.ArgumentParser(
         prog="arcasHLA partial",
         usage="%(prog)s [options] -G genotype.json FASTQ",
@@ -522,7 +516,7 @@ if __name__ == "__main__":
         "--genes",
         help="comma separated list of HLA genes\n"
         + "default: all\n"
-        + "\n".join(wrap("options: " + ", ".join(sorted(genes)), 60))
+        + "\n".join(wrap("options: " + ", ".join(sorted(config.genes)), 60))
         + "\n\n",
         default="all",
         metavar="",
@@ -533,7 +527,7 @@ if __name__ == "__main__":
         "-p",
         "--population",
         help="sample population\n  default: prior\n"
-        + "\n  ".join(wrap("  options: " + ", ".join(sorted(populations)), 60))
+        + "\n  ".join(wrap("  options: " + ", ".join(sorted(config.populations)), 60))
         + "\n\n",
         default="prior",
         metavar="",

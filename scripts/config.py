@@ -2,6 +2,8 @@
 Centralized configuration.
 """
 
+import json
+
 from os.path import dirname, realpath
 
 root_dir = dirname(realpath(__file__)) + "/../"
@@ -35,3 +37,8 @@ info_dir = root_dir + "dat/info/"
 alt_decoys = info_dir + "decoys_alts.json"
 hla_freq = info_dir + "hla_freq.tsv"
 parameters_json = info_dir + "parameters.json"
+
+with open(parameters_json, "r") as param_file:
+    genes, populations, versions = json.load(param_file)
+    genes = set(genes)
+    populations = set(populations)
