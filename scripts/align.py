@@ -64,7 +64,7 @@ def pseudoalign(fqs, sample, paired, reference, outdir, temp, threads, avg, std)
             "[genotype] Error: FASTQ files are empty; check arcasHLA extract for issues."
         )
 
-    command = ["kallisto pseudo -i", reference, "-t", threads, "-o", temp]
+    command = ["kallisto", "pseudo", "-i", reference, "-t", threads, "-o", temp]
 
     if not paired:
         command.extend(["--single -l", str(avg), "-s", str(std)])

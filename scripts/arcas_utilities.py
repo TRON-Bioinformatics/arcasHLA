@@ -73,9 +73,9 @@ def remove_files(files, keep_files):
 
     if type(files) == list:
         for file in files:
-            run_command(["rm -rf", file])
+            run_command(["rm", "-rf", file])
     else:
-        run_command(["rm -rf", files])
+        run_command(["rm", "-rf", files])
 
 
 def run_command(command, message=""):

@@ -206,7 +206,7 @@ def process_str_genotype(input_genotype, genes):
             genotype[gene + "2"] = process_allele(allele, 2)
         else:
             sys.exit("[quant] Error: more than 2 alleles provided for a gene.")
-            run_command(["rm -rf", temp])
+            run_command(["rm", "-rf", temp])
 
     return genotype
 
@@ -319,7 +319,7 @@ def do_customization(
         run_command(command)
 
         if not keep_files:
-            run_command(["rm -rf", temp])
+            run_command(["rm", "-rf", temp])
 
     else:
         genotype = process_str_genotype(genotype, genes)

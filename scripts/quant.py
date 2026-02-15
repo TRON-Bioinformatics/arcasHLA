@@ -81,7 +81,7 @@ def do_quantification(
 
     if file[0].endswith(".fq.gz") or file[0].endswith(".fastq.gz"):
 
-        command = ["kallisto quant", "-i", indv_idx, "-o", temp, "-t", threads]
+        command = ["kallisto", "quant", "-i", indv_idx, "-o", temp, "-t", threads]
 
         if single:
             command.extend(["--single -l", str(avg), "-s", str(std)])
@@ -189,7 +189,7 @@ def do_quantification(
         json.dump(gene_results, file)
 
     if not keep_files:
-        run_command(["rm -rf", temp])
+        run_command(["rm", "-rf", temp])
 
     # LOH functionality
     if LOH:
