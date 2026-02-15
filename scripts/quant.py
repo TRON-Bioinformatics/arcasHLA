@@ -21,28 +21,19 @@
 #   You should have received a copy of the GNU General Public License
 #   along with arcasHLA.  If not, see <https://www.gnu.org/licenses/>.
 # -------------------------------------------------------------------------------
-import time
 
 import os
-import sys
 import re
 import json
 import pickle
 import argparse
-import logging as log
 
-import numpy as np
-import math
 import pandas as pd
 
-from datetime import date
 from argparse import RawTextHelpFormatter
-from textwrap import wrap
-from collections import Counter, defaultdict
-from itertools import combinations
+from collections import defaultdict
 
 import config
-from reference import ensure_ref_exists
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------

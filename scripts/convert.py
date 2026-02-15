@@ -27,13 +27,11 @@ import os
 import json
 import argparse
 import pandas as pd
-import pickle
 
 from argparse import RawTextHelpFormatter
-from os.path import isfile, isdir, dirname, realpath
 
 import config
-from arcas_utilities import check_path, process_allele
+from arcas_utilities import process_allele
 
 # -------------------------------------------------------------------------------
 

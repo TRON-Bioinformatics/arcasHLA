@@ -33,7 +33,7 @@ import logging as log
 import numpy as np
 
 from argparse import RawTextHelpFormatter
-from os.path import isfile, isdir, dirname, realpath
+from os.path import isfile, isdir
 
 from textwrap import wrap
 from scipy import stats
