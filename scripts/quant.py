@@ -36,19 +36,34 @@ from collections import defaultdict
 from arcas_utilities import *
 
 
-def do_quantification(args):
-    paired = not args.single
+def do_quantification(
+    file,
+    sample=None,
+    ref=None,
+    avg=200,
+    std=20,
+    single=False,
+    LOH=False,
+    purity=1.0,
+    ploidy=2.0,
+    threads="1",
+    outdir="./",
+    keep_files=False,
+    temp="/tmp/",
+    verbose=False,
+):
+    paired = not single
 
-    if args.sample == None:
-        sample = os.path.basename(args.file[0]).split(".")[0]
+    if sample == None:
+        sample = os.path.basename(file[0]).split(".")[0]
     else:
-        sample = args.sample
+        sample = sample
 
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
+    outdir = check_path(outdir)
+    temp = create_temp(temp)
 
-    indv_idx = args.ref + ".idx"
-    indv_p = args.ref + ".p"
+    indv_idx = ref + ".idx"
+    indv_p = ref + ".p"
     indv_abundance = outdir + sample + ".quant.tsv"
     allele_results_json = outdir + sample + ".quant.alleles.json"
     gene_results_json = outdir + sample + ".quant.genes.json"
@@ -56,27 +71,27 @@ def do_quantification(args):
     gene_results_tsv = outdir + sample + ".quant.genes.tsv"
     loh_results_tsv = outdir + sample + ".quant.loh.tsv"
 
-    with open(indv_p, "rb") as file:
-        genes, genotype, hla_idx, allele_idx, lengths = pickle.load(file)
+    with open(indv_p, "rb") as json_file:
+        genes, genotype, hla_idx, allele_idx, lengths = pickle.load(json_file)
 
     idx_allele = defaultdict(set)
     for idx, gene in allele_idx.items():
         idx_allele[gene].add(idx)
 
-    if args.file[0].endswith(".fq.gz") or args.file[0].endswith(".fastq.gz"):
+    if file[0].endswith(".fq.gz") or file[0].endswith(".fastq.gz"):
 
-        command = ["kallisto quant", "-i", indv_idx, "-o", temp, "-t", args.threads]
+        command = ["kallisto quant", "-i", indv_idx, "-o", temp, "-t", threads]
 
-        if args.single:
-            command.extend(["--single -l", str(args.avg), "-s", str(args.std)])
+        if single:
+            command.extend(["--single -l", str(avg), "-s", str(std)])
 
-        command.extend(args.file)
+        command.extend(file)
 
         output = run_command(
             command, "[quant] Quantifying with Kallisto: "
         ).stderr.decode()
 
-        if args.verbose:
+        if verbose:
             print(output)
 
         total_reads = re.findall("(?<=processed ).+(?= reads,)", output)[0]
@@ -88,10 +103,10 @@ def do_quantification(args):
         kallisto_results = pd.read_csv(indv_abundance, sep="\t")
 
     else:
-        with open(args.file[1], "r") as file:
-            previous_results = json.load(file)
+        with open(file[1], "r") as json_file:
+            previous_results = json.load(json_file)
 
-        kallisto_results = pd.read_csv(args.file[0], sep="\t")
+        kallisto_results = pd.read_csv(file[0], sep="\t")
 
     idx_allele = defaultdict(set)
     hla_indices = set()
@@ -172,11 +187,11 @@ def do_quantification(args):
     with open(gene_results_json, "w") as file:
         json.dump(gene_results, file)
 
-    if not args.keep_files:
+    if not keep_files:
         run_command(["rm -rf", temp])
 
     # LOH functionality
-    if args.LOH:
+    if LOH:
         corrections_columns = []
 
         for gene in genes:
@@ -194,12 +209,12 @@ def do_quantification(args):
             )
             baf2 = 1 - baf1
 
-            correction1 = (
-                2 * baf1 * (1 + args.purity * (args.ploidy - 2) / 2) + args.purity - 1
-            ) / (args.purity)
-            correction2 = (
-                2 * baf2 * (1 + args.purity * (args.ploidy - 2) / 2) + args.purity - 1
-            ) / (args.purity)
+            correction1 = (2 * baf1 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
+                purity
+            )
+            correction2 = (2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
+                purity
+            )
 
             if correction1 < correction2:
                 minor = correction1
@@ -353,6 +368,21 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_quantification(args)
+    do_quantification(
+        args.file,
+        args.sample,
+        args.ref,
+        args.avg,
+        args.std,
+        args.single,
+        args.LOH,
+        args.purity,
+        args.ploidy,
+        args.threads,
+        args.outdir,
+        args.keep_files,
+        args.temp,
+        args.verbose,
+    )
 
 # -----------------------------------------------------------------------------
