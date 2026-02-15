@@ -422,6 +422,7 @@ def predict_genotype(
 def genotype_gene(
     gene,
     gene_count,
+    allele_eq,
     eqs,
     lengths,
     allele_idx,
@@ -440,7 +441,7 @@ def genotype_gene(
 
     allele_idx = json.loads(allele_idx)
     lengths = json.loads(lengths)
-    lengths = dict([a, int(x)] for a, x in lengths.items())
+    lengths = {a: int(x) for a, x in lengths.items()}
 
     em_results = expectation_maximization(
         eqs,
@@ -488,21 +489,38 @@ def genotype_gene(
     return em_results, genotype
 
 
-def do_genotyping(args):
-    if len(args.file) == 0:
+def do_genotyping(
+    file,
+    genes="all",
+    population="prior",
+    tolerance=10e-7,
+    max_iterations=1000,
+    drop_iterations=None,
+    drop_threshold=0.1,
+    zygosity_threshold=0.15,
+    min_count=75,
+    avg=200,
+    std=20,
+    single=False,
+    outdir="./",
+    threads="1",
+    keep_files=False,
+    temp="/tmp/",
+    log_file=None,
+    verbose=False,
+):
+    if len(file) == 0:
         sys.exit("[genotype] Error: FASTQ or alignment.p file required.")
 
     # Set up temporary and output folders, log file
-    sample = os.path.basename(args.file[0]).split(".")[0]
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
-    if args.log:
-        log_file = args.log
-    else:
+    sample = os.path.basename(file[0]).split(".")[0]
+    outdir = check_path(outdir)
+    temp = create_temp(temp)
+    if not log_file:
         log_file = "".join([outdir, sample, ".genotype.log"])
     with open(log_file, "w"):
         pass
-    if args.verbose:
+    if verbose:
         handlers = [log.FileHandler(log_file), log.StreamHandler()]
 
         log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
@@ -515,7 +533,7 @@ def do_genotyping(args):
     hline()
     log.info(f"[log] Date: %s", str(date.today()))
     log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(args.file))
+    log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(file))
 
     # Load HLA frequencies
     prior = pd.read_csv(config.hla_freq, delimiter="\t")
@@ -526,58 +544,58 @@ def do_genotyping(args):
     ensure_ref_exists()
 
     # Loads reference information
-    with open(config.hla_json, "r") as file:
-        reference_info = json.load(file)
+    with open(config.hla_json, "r") as json_file:
+        reference_info = json.load(json_file)
         (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
 
     log.info(f"[log] Reference: %s", commithash)
     hline()
 
-    if args.file[0].endswith(".alignment.p"):
-        alignment_info = load_alignment(args.file[0], commithash)
+    if file[0].endswith(".alignment.p"):
+        alignment_info = load_alignment(file[0], commithash)
     else:
         alignment_info = get_alignment(
-            args.file,
+            file,
             sample,
             config.hla_idx,
             reference_info,
             outdir,
             temp,
-            args.threads,
-            args.single,
-            avg=args.avg,
-            std=args.std,
+            threads,
+            single,
+            avg=avg,
+            std=std,
         )
 
     (commithash, eq_idx, allele_eq, paired, align_stats, gene_stats) = alignment_info
 
     # Set up EM parameters
-    if not args.drop_iterations:
+    if not drop_iterations:
         if paired:
-            args.drop_iterations = 20
+            drop_iterations = 20
         else:
-            args.drop_iterations = 4
+            drop_iterations = 4
 
     em_results = dict()
     genotypes = dict()
 
     hline()
     log.info("[genotype] Genotyping parameters:")
-    log.info(f"\t\tpopulation: %s", args.population)
-    log.info(f"\t\tminimum count: %s", args.min_count)
-    log.info(f"\t\tmax iterations: %s", args.max_iterations)
-    log.info(f"\t\ttolerance: %s", args.tolerance)
-    log.info(f"\t\tdrop iterations: %s", args.drop_iterations)
-    log.info(f"\t\tdrop threshold: %s", args.drop_threshold)
-    log.info(f"\t\tzygosity threshold: %s", args.zygosity_threshold)
+    log.info(f"\t\tpopulation: %s", population)
+    log.info(f"\t\tminimum count: %s", min_count)
+    log.info(f"\t\tmax iterations: %s", max_iterations)
+    log.info(f"\t\ttolerance: %s", tolerance)
+    log.info(f"\t\tdrop iterations: %s", drop_iterations)
+    log.info(f"\t\tdrop threshold: %s", drop_threshold)
+    log.info(f"\t\tzygosity threshold: %s", zygosity_threshold)
 
     # For each HLA locus, perform EM then scoring
-    for gene in args.genes:
+    for gene in genes:
         hline()
         log.info(f"[genotype] Genotyping HLA-{gene}")
 
         # Skips loci with not enough reads to genotype
-        if gene not in gene_stats or gene_stats[gene][0] < args.min_count:
+        if gene not in gene_stats or gene_stats[gene][0] < min_count:
             log.info(f"[genotype] Not enough reads aligned to HLA-{gene} to genotype.")
             continue
         gene_count, eq_count, abundance = gene_stats[gene]
@@ -589,16 +607,17 @@ def do_genotyping(args):
         em, genotype = genotype_gene(
             gene,
             gene_count,
+            allele_eq,
             eq_idx[gene],
             lengths,
             allele_idx,
-            args.population,
+            population,
             prior,
-            args.tolerance,
-            args.max_iterations,
-            args.drop_iterations,
-            args.drop_threshold,
-            args.zygosity_threshold,
+            tolerance,
+            max_iterations,
+            drop_iterations,
+            drop_threshold,
+            zygosity_threshold,
         )
 
         em_results[gene] = em
@@ -607,7 +626,7 @@ def do_genotyping(args):
     with open("".join([outdir, sample, ".genotype.json"]), "w") as file:
         json.dump(genotypes, file)
 
-    remove_files(temp, args.keep_files)
+    remove_files(temp, keep_files)
 
     hline()
     log.info("")
@@ -829,6 +848,25 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_genotyping(args)
+    do_genotyping(
+        args.file,
+        args.genes,
+        args.population,
+        args.tolerance,
+        args.max_iterations,
+        args.drop_iterations,
+        args.drop_threshold,
+        args.zygosity_threshold,
+        args.min_count,
+        args.avg,
+        args.std,
+        args.single,
+        args.outdir,
+        args.threads,
+        args.keep_files,
+        args.temp,
+        args.log,
+        args.verbose,
+    )
 
 # -----------------------------------------------------------------------------
