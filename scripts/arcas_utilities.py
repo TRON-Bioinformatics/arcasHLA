@@ -26,6 +26,8 @@ import os
 import re
 import logging as log
 import uuid
+
+from shutil import which
 from subprocess import PIPE, run
 
 # -------------------------------------------------------------------------------
@@ -78,10 +80,28 @@ def remove_files(files, keep_files):
         run_command(["rm", "-rf", files])
 
 
+def tool_is_available(tool):
+    """
+    Check whether a given shell tool is availabe to be invoked.
+    """
+    return which(tool) is not None
+
+
 def run_command(command, message=""):
     """Outputs message and command to log, runs command and returns output."""
+
     if type(command) == list:
+        tool = command[0]
         command = " ".join(command)
+
+    else:
+        tool = command
+
+    if not tool_is_available(tool):
+        raise ValueError(
+            f"Cant run {command}, because {tool} is not available/executable in this "
+            "shell. Ensure it is installed, executable, and findable."
+        )
 
     if message:
         log.info("".join([message, "\n\n\t", command, "\n"]))
