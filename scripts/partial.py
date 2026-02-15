@@ -105,6 +105,9 @@ def filter_eqs(complete_genotypes, allele_idx, eq_idx, partial_alleles):
 def type_partial(
     eqs,
     gene,
+    lengths,
+    allele_eq,
+    allele_idx,
     partial_exons,
     complete_genotype,
     partial_alleles,
@@ -267,6 +270,136 @@ def type_partial(
         ]
 
     return complete_genotype
+
+
+def do_partial_genotyping(args):
+    if len(args.file) == 0:
+        sys.exit("[genotype] Error: FASTQ or partial_alignment.p file required")
+
+    # Set up directories and log file
+    sample = os.path.basename(args.file[0]).split(".")[0]
+    outdir = check_path(args.outdir)
+    temp = create_temp(args.temp)
+    if args.log:
+        log_file = args.log
+    else:
+        log_file = "".join([outdir, sample, ".partial_genotype.log"])
+    with open(log_file, "w"):
+        pass
+    if args.verbose:
+        handlers = [log.FileHandler(log_file), log.StreamHandler()]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+    else:
+        handlers = [log.FileHandler(log_file)]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+
+    log.info("")
+    hline()
+    log.info(f"[log] Date: %s", str(date.today()))
+    log.info(f"[log] Sample: %s", sample)
+    log.info(f"[log] Input file(s): %s", ", ".join(args.file))
+
+    prior = pd.read_csv(config.hla_freq, delimiter="\t")
+    prior = prior.set_index("allele").to_dict("index")
+
+    # Checks if HLA reference exists
+    ensure_ref_exists()
+
+    # Loads reference information
+    # with open(partial_p, 'rb') as file:
+    #    reference_info = pickle.load(file)
+    #    (commithash, (gene_set, allele_idx, exon_idx,
+    #        lengths, partial_exons, partial_alleles)) = reference_info
+    with open(config.partial_json, "r") as file:
+        reference_info = json.load(file)
+        (
+            commithash,
+            (gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles),
+        ) = reference_info
+        gene_set = set(gene_set)
+        allele_idx = json.loads(allele_idx)
+        exon_idx = json.loads(exon_idx)
+        lengths = json.loads(lengths)
+        lengths = dict([a, int(x)] for a, x in lengths.items())
+        partial_exons = json.loads(partial_exons)
+        partial_alleles = set(partial_alleles)
+
+    log.info(f"[log] Reference: %s", commithash)
+    hline()
+
+    # Runs transcript assembly if intermediate json not provided
+    if args.file[0].endswith(".partial_alignment.p"):
+        alignment_info = load_alignment(args.file[0], commithash, True)
+    else:
+        alignment_info = get_alignment(
+            args.file,
+            sample,
+            config.partial_idx,
+            reference_info,
+            outdir,
+            temp,
+            args.threads,
+            args.single,
+            True,
+            args.avg,
+            args.std,
+        )
+    commithash, eq_idx, _, paired, align_stats, _ = alignment_info
+
+    # Load alleles from arcasHLA genotype
+    with open(args.genotype, "r") as file:
+        complete_genotypes = json.load(file)
+
+    genes = set(args.genes) & set(complete_genotypes.keys())
+
+    # Filter out alleles not returned by arcasHLA genotype
+    eq_idx, allele_eq = filter_eqs(
+        complete_genotypes, allele_idx, eq_idx, partial_alleles
+    )
+
+    partial_results = dict()
+
+    # For each HLA locus, check for possible partial alleles
+    for gene in sorted(genes):
+        hline()
+        log.info(f"[genotype] Partial genotyping HLA-{gene}")
+        complete_genotype = complete_genotypes[gene]
+        if len(complete_genotype) == 1:
+            complete_genotype.append(complete_genotype[0])
+
+        genotype = type_partial(
+            eq_idx,
+            gene,
+            lengths,
+            allele_eq,
+            allele_idx,
+            partial_exons,
+            complete_genotype,
+            partial_alleles,
+            args.population,
+            prior,
+            args.tolerance,
+            args.max_iterations,
+            args.drop_iterations,
+            args.drop_threshold,
+            args.zygosity_threshold,
+        )
+
+        partial_results[gene] = genotype
+        log.info("\n[genotype] Most likely genotype:")
+
+        for allele in genotype:
+            log.info(f"\t\t{allele}")
+
+    with open("".join([outdir, sample, ".partial_genotype.json"]), "w") as file:
+        json.dump(partial_results, file)
+
+    remove_files(temp, args.keep_files)
+
+    hline()
+    log.info("")
 
 
 # -------------------------------------------------------------------------------
@@ -496,129 +629,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if len(args.file) == 0:
-        sys.exit("[genotype] Error: FASTQ or partial_alignment.p file required")
-
-    # Set up directories and log file
-    sample = os.path.basename(args.file[0]).split(".")[0]
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
-    if args.log:
-        log_file = args.log
-    else:
-        log_file = "".join([outdir, sample, ".partial_genotype.log"])
-    with open(log_file, "w"):
-        pass
-    if args.verbose:
-        handlers = [log.FileHandler(log_file), log.StreamHandler()]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-    else:
-        handlers = [log.FileHandler(log_file)]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-
-    log.info("")
-    hline()
-    log.info(f"[log] Date: %s", str(date.today()))
-    log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file(s): %s", ", ".join(args.file))
-
-    prior = pd.read_csv(config.hla_freq, delimiter="\t")
-    prior = prior.set_index("allele").to_dict("index")
-
-    # Checks if HLA reference exists
-    ensure_ref_exists()
-
-    # Loads reference information
-    # with open(partial_p, 'rb') as file:
-    #    reference_info = pickle.load(file)
-    #    (commithash, (gene_set, allele_idx, exon_idx,
-    #        lengths, partial_exons, partial_alleles)) = reference_info
-    with open(config.partial_json, "r") as file:
-        reference_info = json.load(file)
-        (
-            commithash,
-            (gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles),
-        ) = reference_info
-        gene_set = set(gene_set)
-        allele_idx = json.loads(allele_idx)
-        exon_idx = json.loads(exon_idx)
-        lengths = json.loads(lengths)
-        lengths = dict([a, int(x)] for a, x in lengths.items())
-        partial_exons = json.loads(partial_exons)
-        partial_alleles = set(partial_alleles)
-
-    log.info(f"[log] Reference: %s", commithash)
-    hline()
-
-    # Runs transcript assembly if intermediate json not provided
-    if args.file[0].endswith(".partial_alignment.p"):
-        alignment_info = load_alignment(args.file[0], commithash, True)
-    else:
-        alignment_info = get_alignment(
-            args.file,
-            sample,
-            config.partial_idx,
-            reference_info,
-            outdir,
-            temp,
-            args.threads,
-            args.single,
-            True,
-            args.avg,
-            args.std,
-        )
-    commithash, eq_idx, _, paired, align_stats, _ = alignment_info
-
-    # Load alleles from arcasHLA genotype
-    with open(args.genotype, "r") as file:
-        complete_genotypes = json.load(file)
-
-    genes = set(args.genes) & set(complete_genotypes.keys())
-
-    # Filter out alleles not returned by arcasHLA genotype
-    eq_idx, allele_eq = filter_eqs(
-        complete_genotypes, allele_idx, eq_idx, partial_alleles
-    )
-
-    partial_results = dict()
-
-    # For each HLA locus, check for possible partial alleles
-    for gene in sorted(genes):
-        hline()
-        log.info(f"[genotype] Partial genotyping HLA-{gene}")
-        complete_genotype = complete_genotypes[gene]
-        if len(complete_genotype) == 1:
-            complete_genotype.append(complete_genotype[0])
-
-        genotype = type_partial(
-            eq_idx,
-            gene,
-            partial_exons,
-            complete_genotype,
-            partial_alleles,
-            args.population,
-            prior,
-            args.tolerance,
-            args.max_iterations,
-            args.drop_iterations,
-            args.drop_threshold,
-            args.zygosity_threshold,
-        )
-
-        partial_results[gene] = genotype
-        log.info("\n[genotype] Most likely genotype:")
-
-        for allele in genotype:
-            log.info(f"\t\t{allele}")
-
-    with open("".join([outdir, sample, ".partial_genotype.json"]), "w") as file:
-        json.dump(partial_results, file)
-
-    remove_files(temp, args.keep_files)
-
-    hline()
-    log.info("")
+    do_partial_genotyping(args)
 
 # -----------------------------------------------------------------------------

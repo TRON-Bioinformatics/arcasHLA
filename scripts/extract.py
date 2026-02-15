@@ -171,6 +171,56 @@ def bam_to_fastq(bam, outdir, paired, temp, threads):
         run_command(["pigz", "-f", "-p", threads, "-S", ".gz", fq])
 
 
+def do_extraction(args):
+    outdir = check_path(args.outdir)
+    temp = create_temp(args.temp)
+
+    sample = os.path.basename(args.bam).split(".")[0]
+
+    # Set up log file
+    if args.log:
+        log_file = args.log
+    else:
+        log_file = "".join([outdir, sample, ".extract.log"])
+    with open(log_file, "w"):
+        pass
+    if args.verbose:
+        handlers = [log.FileHandler(log_file), log.StreamHandler()]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+    else:
+        handlers = [log.FileHandler(log_file)]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+
+    log.info("")
+    hline()
+    log.info(f"[log] Date: %s", str(date.today()))
+    log.info(f"[log] Sample: %s", sample)
+    log.info(f"[log] Input file: %s", args.bam)
+    log.info(
+        "[log] Read type: {}-end".format("paired" if not args.single else "single")
+    )
+    hline()
+
+    # Load names of regions outside chr6 with HLA loci
+    with open(config.alt_decoys, "r") as file:
+        alts = json.load(file)
+
+    if args.allreads:
+        bam_to_fastq(args.bam, outdir, not args.single, temp, args.threads)
+
+    else:
+        extract_reads(
+            args.bam, outdir, not args.single, args.unmapped, alts, temp, args.threads
+        )
+
+    remove_files(temp, args.keep_files)
+
+    hline()
+    log.info("")
+
+
 # -------------------------------------------------------------------------------
 #   Main
 # -------------------------------------------------------------------------------
@@ -243,51 +293,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
-
-    sample = os.path.basename(args.bam).split(".")[0]
-
-    # Set up log file
-    if args.log:
-        log_file = args.log
-    else:
-        log_file = "".join([outdir, sample, ".extract.log"])
-    with open(log_file, "w"):
-        pass
-    if args.verbose:
-        handlers = [log.FileHandler(log_file), log.StreamHandler()]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-    else:
-        handlers = [log.FileHandler(log_file)]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-
-    log.info("")
-    hline()
-    log.info(f"[log] Date: %s", str(date.today()))
-    log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file: %s", args.bam)
-    log.info(
-        "[log] Read type: {}-end".format("paired" if not args.single else "single")
-    )
-    hline()
-
-    # Load names of regions outside chr6 with HLA loci
-    with open(config.alt_decoys, "r") as file:
-        alts = json.load(file)
-
-    if args.allreads:
-        bam_to_fastq(args.bam, outdir, not args.single, temp, args.threads)
-
-    else:
-        extract_reads(
-            args.bam, outdir, not args.single, args.unmapped, alts, temp, args.threads
-        )
-
-    remove_files(temp, args.keep_files)
-
-    hline()
-    log.info("")
+    do_extraction(args)
 # -------------------------------------------------------------------------------

@@ -520,6 +520,48 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
+def build_reference(args):
+    if args.verbose:
+        log.basicConfig(level=log.DEBUG, format="%(message)s")
+    else:
+        handlers = [log.StreamHandler()]
+        log.basicConfig(format="%(message)s")
+
+    log.info("")
+    hline()
+
+    check_path(config.ref_dir)
+
+    if args.update:
+        log.info("[reference] Updating HLA reference")
+        checkout_imgt_hla_db("origin")
+        create_conversion_tables(False)
+        create_fasta_ref_from_hla_allele_data()
+
+    elif args.rebuild:
+        create_conversion_tables()
+        create_fasta_ref_from_hla_allele_data()
+
+    elif args.version:
+        if args.version not in versions:
+            sys.exit("[reference] Error: invalid version.")
+        checkout_imgt_hla_db(versions[args.version])
+        create_fasta_ref_from_hla_allele_data()
+        create_conversion_tables()
+
+    elif args.commit:
+        checkout_imgt_hla_db(args.commit)
+        create_fasta_ref_from_hla_allele_data()
+        create_conversion_tables()
+
+    else:
+        ensure_ref_exists()
+        hla_dat_commit(True)
+
+    hline()
+    log.info("")
+
+
 # -------------------------------------------------------------------------------
 #   Main
 # -------------------------------------------------------------------------------
@@ -577,43 +619,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.verbose:
-        log.basicConfig(level=log.DEBUG, format="%(message)s")
-    else:
-        handlers = [log.StreamHandler()]
-        log.basicConfig(format="%(message)s")
-
-    log.info("")
-    hline()
-
-    check_path(config.ref_dir)
-
-    if args.update:
-        log.info("[reference] Updating HLA reference")
-        checkout_imgt_hla_db("origin")
-        create_conversion_tables(False)
-        create_fasta_ref_from_hla_allele_data()
-
-    elif args.rebuild:
-        create_conversion_tables()
-        create_fasta_ref_from_hla_allele_data()
-
-    elif args.version:
-        if args.version not in versions:
-            sys.exit("[reference] Error: invalid version.")
-        checkout_imgt_hla_db(versions[args.version])
-        create_fasta_ref_from_hla_allele_data()
-        create_conversion_tables()
-
-    elif args.commit:
-        checkout_imgt_hla_db(args.commit)
-        create_fasta_ref_from_hla_allele_data()
-        create_conversion_tables()
-
-    else:
-        ensure_ref_exists()
-        hla_dat_commit(True)
-
-    hline()
-    log.info("")
+    build_reference(args)
 # -------------------------------------------------------------------------------

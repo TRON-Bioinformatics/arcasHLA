@@ -488,6 +488,135 @@ def genotype_gene(
     return em_results, genotype
 
 
+def do_genotyping(args):
+    if len(args.file) == 0:
+        sys.exit("[genotype] Error: FASTQ or alignment.p file required.")
+
+    # Set up temporary and output folders, log file
+    sample = os.path.basename(args.file[0]).split(".")[0]
+    outdir = check_path(args.outdir)
+    temp = create_temp(args.temp)
+    if args.log:
+        log_file = args.log
+    else:
+        log_file = "".join([outdir, sample, ".genotype.log"])
+    with open(log_file, "w"):
+        pass
+    if args.verbose:
+        handlers = [log.FileHandler(log_file), log.StreamHandler()]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+    else:
+        handlers = [log.FileHandler(log_file)]
+
+        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
+
+    log.info("")
+    hline()
+    log.info(f"[log] Date: %s", str(date.today()))
+    log.info(f"[log] Sample: %s", sample)
+    log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(args.file))
+
+    # Load HLA frequencies
+    prior = pd.read_csv(config.hla_freq, delimiter="\t")
+    prior = prior.set_index("allele").to_dict("index")
+
+    # Checks if HLA reference exists
+    check_path(config.ref_dir)
+    ensure_ref_exists()
+
+    # Loads reference information
+    # with open(hla_p, 'rb') as file:
+    #    reference_info = pickle.load(file)
+    #    (commithash,(gene_set, allele_idx,
+    #     lengths, gene_length)) = reference_info
+    with open(config.hla_json, "r") as file:
+        reference_info = json.load(file)
+        (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
+
+    log.info(f"[log] Reference: %s", commithash)
+    hline()
+
+    if args.file[0].endswith(".alignment.p"):
+        alignment_info = load_alignment(args.file[0], commithash)
+    else:
+        alignment_info = get_alignment(
+            args.file,
+            sample,
+            config.hla_idx,
+            reference_info,
+            outdir,
+            temp,
+            args.threads,
+            args.single,
+            avg=args.avg,
+            std=args.std,
+        )
+
+    (commithash, eq_idx, allele_eq, paired, align_stats, gene_stats) = alignment_info
+
+    # Set up EM parameters
+    if not args.drop_iterations:
+        if paired:
+            args.drop_iterations = 20
+        else:
+            args.drop_iterations = 4
+
+    em_results = dict()
+    genotypes = dict()
+
+    hline()
+    log.info("[genotype] Genotyping parameters:")
+    log.info(f"\t\tpopulation: %s", args.population)
+    log.info(f"\t\tminimum count: %s", args.min_count)
+    log.info(f"\t\tmax iterations: %s", args.max_iterations)
+    log.info(f"\t\ttolerance: %s", args.tolerance)
+    log.info(f"\t\tdrop iterations: %s", args.drop_iterations)
+    log.info(f"\t\tdrop threshold: %s", args.drop_threshold)
+    log.info(f"\t\tzygosity threshold: %s", args.zygosity_threshold)
+
+    # For each HLA locus, perform EM then scoring
+    for gene in args.genes:
+        hline()
+        log.info(f"[genotype] Genotyping HLA-{gene}")
+
+        # Skips loci with not enough reads to genotype
+        if gene not in gene_stats or gene_stats[gene][0] < args.min_count:
+            log.info(f"[genotype] Not enough reads aligned to HLA-{gene} to genotype.")
+            continue
+        gene_count, eq_count, abundance = gene_stats[gene]
+        log.info(
+            f"[genotype] {gene_count:.0f} reads aligned to HLA-{gene} "
+            + f"in {eq_count} classes"
+        )
+
+        em, genotype = genotype_gene(
+            gene,
+            gene_count,
+            eq_idx[gene],
+            lengths,
+            allele_idx,
+            args.population,
+            prior,
+            args.tolerance,
+            args.max_iterations,
+            args.drop_iterations,
+            args.drop_threshold,
+            args.zygosity_threshold,
+        )
+
+        em_results[gene] = em
+        genotypes[gene] = genotype
+
+    with open("".join([outdir, sample, ".genotype.json"]), "w") as file:
+        json.dump(genotypes, file)
+
+    remove_files(temp, args.keep_files)
+
+    hline()
+    log.info("")
+
+
 # -----------------------------------------------------------------------------
 # Runs genotyping
 # -----------------------------------------------------------------------------
@@ -720,131 +849,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if len(args.file) == 0:
-        sys.exit("[genotype] Error: FASTQ or alignment.p file required.")
-
-    # Set up temporary and output folders, log file
-    sample = os.path.basename(args.file[0]).split(".")[0]
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
-    if args.log:
-        log_file = args.log
-    else:
-        log_file = "".join([outdir, sample, ".genotype.log"])
-    with open(log_file, "w"):
-        pass
-    if args.verbose:
-        handlers = [log.FileHandler(log_file), log.StreamHandler()]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-    else:
-        handlers = [log.FileHandler(log_file)]
-
-        log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
-
-    log.info("")
-    hline()
-    log.info(f"[log] Date: %s", str(date.today()))
-    log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file(s): %s", f"\n\t\t     ".join(args.file))
-
-    # Load HLA frequencies
-    prior = pd.read_csv(config.hla_freq, delimiter="\t")
-    prior = prior.set_index("allele").to_dict("index")
-
-    # Checks if HLA reference exists
-    check_path(config.ref_dir)
-    ensure_ref_exists()
-
-    # Loads reference information
-    # with open(hla_p, 'rb') as file:
-    #    reference_info = pickle.load(file)
-    #    (commithash,(gene_set, allele_idx,
-    #     lengths, gene_length)) = reference_info
-    with open(config.hla_json, "r") as file:
-        reference_info = json.load(file)
-        (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
-
-    log.info(f"[log] Reference: %s", commithash)
-    hline()
-
-    if args.file[0].endswith(".alignment.p"):
-        alignment_info = load_alignment(args.file[0], commithash)
-    else:
-        alignment_info = get_alignment(
-            args.file,
-            sample,
-            config.hla_idx,
-            reference_info,
-            outdir,
-            temp,
-            args.threads,
-            args.single,
-            avg=args.avg,
-            std=args.std,
-        )
-
-    (commithash, eq_idx, allele_eq, paired, align_stats, gene_stats) = alignment_info
-
-    # Set up EM parameters
-    if not args.drop_iterations:
-        if paired:
-            args.drop_iterations = 20
-        else:
-            args.drop_iterations = 4
-
-    em_results = dict()
-    genotypes = dict()
-
-    hline()
-    log.info("[genotype] Genotyping parameters:")
-    log.info(f"\t\tpopulation: %s", args.population)
-    log.info(f"\t\tminimum count: %s", args.min_count)
-    log.info(f"\t\tmax iterations: %s", args.max_iterations)
-    log.info(f"\t\ttolerance: %s", args.tolerance)
-    log.info(f"\t\tdrop iterations: %s", args.drop_iterations)
-    log.info(f"\t\tdrop threshold: %s", args.drop_threshold)
-    log.info(f"\t\tzygosity threshold: %s", args.zygosity_threshold)
-
-    # For each HLA locus, perform EM then scoring
-    for gene in args.genes:
-        hline()
-        log.info(f"[genotype] Genotyping HLA-{gene}")
-
-        # Skips loci with not enough reads to genotype
-        if gene not in gene_stats or gene_stats[gene][0] < args.min_count:
-            log.info(f"[genotype] Not enough reads aligned to HLA-{gene} to genotype.")
-            continue
-        gene_count, eq_count, abundance = gene_stats[gene]
-        log.info(
-            f"[genotype] {gene_count:.0f} reads aligned to HLA-{gene} "
-            + f"in {eq_count} classes"
-        )
-
-        em, genotype = genotype_gene(
-            gene,
-            gene_count,
-            eq_idx[gene],
-            lengths,
-            allele_idx,
-            args.population,
-            prior,
-            args.tolerance,
-            args.max_iterations,
-            args.drop_iterations,
-            args.drop_threshold,
-            args.zygosity_threshold,
-        )
-
-        em_results[gene] = em
-        genotypes[gene] = genotype
-
-    with open("".join([outdir, sample, ".genotype.json"]), "w") as file:
-        json.dump(genotypes, file)
-
-    remove_files(temp, args.keep_files)
-
-    hline()
-    log.info("")
+    do_genotyping(args)
 
 # -----------------------------------------------------------------------------
