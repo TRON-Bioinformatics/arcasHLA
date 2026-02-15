@@ -25,6 +25,7 @@
 import os
 import json
 import argparse
+import sys
 import pandas as pd
 
 from collections import defaultdict
@@ -133,8 +134,7 @@ def do_merging(run="", indir=".", outdir="."):
         process_json(gene_count_files, indir, outdir, run, "genes")
 
 
-if __name__ == "__main__":
-
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA merge",
         usage="%(prog)s [options]",
@@ -167,8 +167,12 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
-    do_merging(args.run, args.indir, args.outdir)
+    do_merging(parsed_args.run, parsed_args.indir, parsed_args.outdir)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
 
 # -------------------------------------------------------------------------------

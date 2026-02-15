@@ -327,7 +327,7 @@ def do_customization(
         build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
 
 
-def main(args: list[str]) -> None:
+def main(args) -> None:
     parser = argparse.ArgumentParser(
         prog="arcasHLA customize",
         usage="%(prog)s [options]",
