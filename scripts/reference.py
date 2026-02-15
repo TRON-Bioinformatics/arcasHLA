@@ -56,19 +56,23 @@ __date__ = "2022-01-27"
 
 ROOT_DIR = dirname(realpath(__file__)) + "/../"
 
-IMGTHLA = ROOT_DIR + "dat/IMGTHLA/"
 IMGTHLA_GIT = "https://github.com/ANHIG/IMGTHLA.git"
-HLA_DAT = ROOT_DIR + "dat/IMGTHLA/hla.dat"
-HLA_NOM_G = ROOT_DIR + "dat/IMGTHLA/wmda/hla_nom_g.txt"
-HLA_NOM_P = ROOT_DIR + "dat/IMGTHLA/wmda/hla_nom_p.txt"
-HLA_CONVERT_JSON = ROOT_DIR + "dat/ref/hla.convert.json"
-HLA_FA = ROOT_DIR + "dat/ref/hla.fasta"
-PARTIAL_FA = ROOT_DIR + "dat/ref/hla_partial.fasta"
-HLA_JSON = ROOT_DIR + "dat/ref/hla.p.json"
-PARTIAL_JSON = ROOT_DIR + "dat/ref/hla_partial.p.json"
-HLA_IDX = ROOT_DIR + "dat/ref/hla.idx"
-PARTIAL_IDX = ROOT_DIR + "dat/ref/hla_partial.idx"
-PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
+IMGTHLA = ROOT_DIR + "dat/IMGTHLA/"
+HLA_DAT = IMGTHLA + "hla.dat"
+HLA_NOM_G = IMGTHLA + "wmda/hla_nom_g.txt"
+HLA_NOM_P = IMGTHLA + "wmda/hla_nom_p.txt"
+
+REF_DIR =  ROOT_DIR + "dat/ref/"
+HLA_CONVERT_JSON = REF_DIR + "hla.convert.json"
+HLA_FA = REF_DIR + "hla.fasta"
+PARTIAL_FA = REF_DIR + "hla_partial.fasta"
+HLA_JSON = REF_DIR + "hla.p.json"
+PARTIAL_JSON = REF_DIR + "hla_partial.p.json"
+HLA_IDX = REF_DIR + "hla.idx"
+PARTIAL_IDX = REF_DIR + "hla_partial.idx"
+
+INFO_DIR = ROOT_DIR + "dat/info/"
+PARAMETERS_JSON = ROOT_DIR + "parameters.json"
 
 
 # -------------------------------------------------------------------------------
@@ -610,7 +614,7 @@ if __name__ == "__main__":
     log.info("")
     hline()
 
-    check_path(ROOT_DIR + "dat/ref")
+    check_path(REF_DIR)
 
     if args.update:
         log.info("[reference] Updating HLA reference")

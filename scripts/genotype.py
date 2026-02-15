@@ -55,10 +55,13 @@ __date__ = "2022-01-27"
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-HLA_JSON = ROOT_DIR + "dat/ref/hla.p.json"
-HLA_IDX = ROOT_DIR + "dat/ref/hla.idx"
-HLA_FREQ = ROOT_DIR + "dat/info/hla_freq.tsv"
-PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
+REF_DIR = ROOT_DIR + "dat/ref/"
+HLA_JSON = REF_DIR + "hla.p.json"
+HLA_IDX = REF_DIR + "hla.idx"
+
+INFO_DIR = ROOT_DIR + "dat/info/"
+HLA_FREQ = INFO_DIR + "hla_freq.tsv"
+PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 # -----------------------------------------------------------------------------
 # Genotype
@@ -771,7 +774,7 @@ if __name__ == "__main__":
     prior = prior.set_index("allele").to_dict("index")
 
     # Checks if HLA reference exists
-    check_path(ROOT_DIR + "dat/ref")
+    check_path(REF_DIR)
     ensure_ref_exists()
 
     # Loads reference information

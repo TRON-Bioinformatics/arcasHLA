@@ -45,7 +45,8 @@ __date__ = "2022-01-27"
 
 ROOT_DIR = dirname(realpath(__file__)) + "/../"
 
-HLA_CONVERT_JSON = ROOT_DIR + "dat/ref/hla.convert.json"
+REF_DIR = ROOT_DIR + "dat/ref/"
+HLA_CONVERT_JSON = REF_DIR + "hla.convert.json"
 
 # -------------------------------------------------------------------------------
 

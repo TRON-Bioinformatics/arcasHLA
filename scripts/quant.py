@@ -52,7 +52,8 @@ __date__ = "2022-01-27"
 # -------------------------------------------------------------------------------
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
+INFO_DIR = ROOT_DIR + "dat/info/"
+PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 
 # -------------------------------------------------------------------------------
