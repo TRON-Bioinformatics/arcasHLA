@@ -36,7 +36,7 @@ from arcas_utilities import process_allele
 # -------------------------------------------------------------------------------
 
 
-def convert_allele(allele, resolution):
+def convert_allele(allele, resolution, p_group, g_group, force=False):
     """Checks nomenclature of input allele and returns converted allele."""
     i = len(allele.split(":"))
 
@@ -47,7 +47,7 @@ def convert_allele(allele, resolution):
 
         # Output: 1-field allele unless forced
         elif type(resolution) == int:
-            if resolution > 1 and not args.force:
+            if resolution > 1 and not force:
                 sys.exit(
                     "[convert] Error: p-group cannot be "
                     + "converted to %.0f fields." % resolution
@@ -59,7 +59,7 @@ def convert_allele(allele, resolution):
 
         # Output: 1-field allele unless forced
         if type(resolution) == int:
-            if resolution > 1 and not args.force:
+            if resolution > 1 and not force:
                 sys.exit(
                     "[convert] Error: g-group cannot be converted"
                     + "to %.0f fields." % resolution
@@ -96,11 +96,11 @@ def convert_allele(allele, resolution):
     return allele
 
 
-def do_conversion(args):
+def do_conversion(file: str, resolution_string, outfile=None, force=False):
     # p_group, g_group = pickle.load(open(hla_convert,'rb'))
     # to do, test this
-    with open(config.hla_convert_json, "r") as file:
-        p_group, g_group = json.load(file)
+    with open(config.hla_convert_json, "r") as json_file:
+        p_group, g_group = json.load(json_file)
 
     # Check input resolution
     accepted_fields = {"1", "2", "3", "4"}
@@ -108,10 +108,10 @@ def do_conversion(args):
 
     resolution = None
 
-    if args.resolution in accepted_fields:
-        resolution = int(args.resolution)
-    elif args.resolution.lower() in accepted_groupings:
-        resolution = args.resolution.lower()
+    if resolution_string in accepted_fields:
+        resolution = int(resolution_string)
+    elif resolution_string.lower() in accepted_groupings:
+        resolution = resolution_string.lower()
 
     if not resolution:
         sys.exit(
@@ -120,18 +120,16 @@ def do_conversion(args):
         )
 
     # Create outfile name
-    if not args.outfile:
+    if not outfile:
         outfile = [
-            os.path.splitext(os.path.basename(args.file))[0],
-            args.resolution.lower(),
+            os.path.splitext(os.path.basename(file))[0],
+            resolution_string.lower(),
             "tsv",
         ]
         outfile = ".".join(outfile)
-    else:
-        outfile = args.outfile
 
     # Load input genotypes
-    df_genotypes = pd.read_csv(args.file, sep="\t").set_index("subject")
+    df_genotypes = pd.read_csv(file, sep="\t").set_index("subject")
     genotypes = df_genotypes.to_dict("index")
 
     for subject, genotype in genotypes.items():
@@ -139,7 +137,9 @@ def do_conversion(args):
             if type(allele) != str:
                 continue
 
-            genotypes[subject][gene] = convert_allele(allele, resolution)
+            genotypes[subject][gene] = convert_allele(
+                allele, resolution, p_group, g_group, force
+            )
 
     pd.DataFrame(genotypes).T.rename_axis("subject").to_csv(outfile, sep="\t")
 
@@ -199,6 +199,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_conversion(args)
+    do_conversion(args.file, args.resolution, args.outfile, args.force)
 
 # -------------------------------------------------------------------------------
