@@ -514,8 +514,10 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
-def build_reference(args):
-    if args.verbose:
+def build_reference(
+    update=False, rebuild=False, version=None, commit=None, verbose=False
+):
+    if verbose:
         log.basicConfig(level=log.DEBUG, format="%(message)s")
     else:
         handlers = [log.StreamHandler()]
@@ -526,25 +528,25 @@ def build_reference(args):
 
     check_path(config.ref_dir)
 
-    if args.update:
+    if update:
         log.info("[reference] Updating HLA reference")
         checkout_imgt_hla_db("origin")
         create_conversion_tables(False)
         create_fasta_ref_from_hla_allele_data()
 
-    elif args.rebuild:
+    elif rebuild:
         create_conversion_tables()
         create_fasta_ref_from_hla_allele_data()
 
-    elif args.version:
-        if args.version not in config.versions:
+    elif version:
+        if version not in config.versions:
             sys.exit("[reference] Error: invalid version.")
-        checkout_imgt_hla_db(config.versions[args.version])
+        checkout_imgt_hla_db(config.versions[version])
         create_fasta_ref_from_hla_allele_data()
         create_conversion_tables()
 
-    elif args.commit:
-        checkout_imgt_hla_db(args.commit)
+    elif commit:
+        checkout_imgt_hla_db(commit)
         create_fasta_ref_from_hla_allele_data()
         create_conversion_tables()
 
