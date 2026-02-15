@@ -54,9 +54,13 @@ __date__ = "2021-01-27"
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
-PARTIAL_JSON = ROOT_DIR + "dat/ref/hla_partial.p.json"
-PARTIAL_IDX = ROOT_DIR + "dat/ref/hla_partial.idx"
-HLA_FREQ = ROOT_DIR + "dat/info/hla_freq.tsv"
+REF_DIR = ROOT_DIR + "dat/ref/"
+PARTIAL_JSON = REF_DIR + "hla_partial.p.json"
+PARTIAL_IDX = REF_DIR + "hla_partial.idx"
+
+INFO_DIR = ROOT_DIR + "dat/info/"
+HLA_FREQ = INFO_DIR + "hla_freq.tsv"
+PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 # -------------------------------------------------------------------------------
 # Process transcript assembly output
@@ -355,7 +359,7 @@ def arg_check_threshold(parser, arg):
 
 if __name__ == "__main__":
 
-    with open(ROOT_DIR + "dat/info/parameters.json", "r") as file:
+    with open(PARAMETERS_JSON, "r") as file:
         genes, populations, databases = json.load(file)
         genes = set(genes)
         populations = set(populations)

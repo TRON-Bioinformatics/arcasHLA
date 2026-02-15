@@ -53,21 +53,25 @@ __date__ = "2022-01-27"
 # -------------------------------------------------------------------------------
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
-ALLELE_GROUP_JSON = ROOT_DIR + "dat/ref/allele_groups.json"
-CDNA_JSON = ROOT_DIR + "dat/ref/cDNA.json"
-CDNA_SINGLE_JSON = ROOT_DIR + "dat/ref/cDNA.single.json"
-HLA_JSON = ROOT_DIR + "dat/ref/hla_transcripts.json"
-PARAMETERS_JSON = ROOT_DIR + "dat/info/parameters.json"
 
+REF_DIR = ROOT_DIR + "dat/ref/"
+ALLELE_GROUP_JSON = REF_DIR + "allele_groups.json"
+CDNA_JSON = REF_DIR + "cDNA.json"
+CDNA_SINGLE_JSON = REF_DIR + "cDNA.single.json"
+HLA_TRANSCRIPTS_JSON = REF_DIR + "hla_transcripts.json"
+REF_ZIP_ARCHIVE = REF_DIR + "customization_reference_fastas.tar.gz"
 ZIPPED_REF_FILES = {
-    "GRCh38_chr6": ROOT_DIR + "dat/ref/GRCh38.chr6.noHLA.fasta",
-    "GRCh38": ROOT_DIR + "dat/ref/GRCh38.all.noHLA.fasta",
-    "dummy_HLA_fa": ROOT_DIR + "dat/ref/GRCh38.chr6.HLA.fasta",
+    "GRCh38_chr6": REF_DIR + "GRCh38.chr6.noHLA.fasta",
+    "GRCh38": REF_DIR + "GRCh38.all.noHLA.fasta",
+    "dummy_HLA_fa": REF_DIR + "GRCh38.chr6.HLA.fasta",
 }
+
+INFO_DIR = ROOT_DIR + "dat/info/"
+PARAMETERS_JSON = INFO_DIR + "parameters.json"
 
 
 class ZippedRefFile:
-    _ref_file_archive = ROOT_DIR + "dat/ref/customization_reference_fastas.tar.gz"
+    _ref_file_archive = REF_ZIP_ARCHIVE
 
     @classmethod
     def _get_ref_file_from_archive(cls, ref_file: str) -> None:
@@ -122,7 +126,7 @@ def build_custom_reference(
             SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38"), "fasta")
         )
 
-    with open(HLA_JSON, "r") as file:
+    with open(HLA_TRANSCRIPTS_JSON, "r") as file:
         HLA_transcripts = json.load(file)
 
     genes = {allele_id[:-1] for allele_id in genotype.keys()}
