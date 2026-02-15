@@ -33,7 +33,6 @@ import pandas as pd
 from argparse import RawTextHelpFormatter
 from collections import defaultdict
 
-import config
 from arcas_utilities import *
 
 
@@ -254,12 +253,6 @@ def arg_check_files(parser, arg):
 
 
 if __name__ == "__main__":
-
-    with open(config.parameters_json, "r") as file:
-        genes, populations, _ = json.load(file)
-        genes = set(genes)
-        populations = set(populations)
-
     parser = argparse.ArgumentParser(
         prog="arcasHLA quant",
         usage="%(prog)s [options] FASTQs",

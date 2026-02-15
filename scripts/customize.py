@@ -325,11 +325,6 @@ def do_customization(args):
 
 
 def main(args: list[str]) -> None:
-    with open(config.parameters_json, "r") as file:
-        genes, populations, _ = json.load(file)
-        genes = set(genes)
-        populations = set(populations)
-
     parser = argparse.ArgumentParser(
         prog="arcasHLA customize",
         usage="%(prog)s [options]",
@@ -367,7 +362,7 @@ def main(args: list[str]) -> None:
         "--genes",
         help="comma separated list of HLA genes\n"
         + "default: all\n"
-        + "\n".join(wrap("options: " + ", ".join(sorted(genes)), 60))
+        + "\n".join(wrap("options: " + ", ".join(sorted(config.genes)), 60))
         + "\n\n",
         default="",
         metavar="",

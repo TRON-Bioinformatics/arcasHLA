@@ -537,9 +537,9 @@ def build_reference(args):
         create_fasta_ref_from_hla_allele_data()
 
     elif args.version:
-        if args.version not in versions:
+        if args.version not in config.versions:
             sys.exit("[reference] Error: invalid version.")
-        checkout_imgt_hla_db(versions[args.version])
+        checkout_imgt_hla_db(config.versions[args.version])
         create_fasta_ref_from_hla_allele_data()
         create_conversion_tables()
 
@@ -561,9 +561,6 @@ def build_reference(args):
 # -------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    with open(config.parameters_json, "r") as file:
-        _, _, versions = json.load(file)
-
     parser = argparse.ArgumentParser(
         prog="arcasHLA reference",
         usage="%(prog)s [options]",
@@ -589,7 +586,7 @@ if __name__ == "__main__":
         "--version",
         type=str,
         help="checkout IMGT/HLA version using version\n"
-        + "\n".join(wrap("options: " + ", ".join(sorted(versions.keys())), 60))
+        + "\n".join(wrap("options: " + ", ".join(sorted(config.versions.keys())), 60))
         + "\n\n",
         default=False,
         metavar="",
