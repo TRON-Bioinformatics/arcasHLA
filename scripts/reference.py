@@ -268,8 +268,7 @@ def write_reference(sequences, info, fasta, idx, database, type):
         SeqIO.write(sequences, file, "fasta")
 
     commithash = hla_dat_commit()
-    # with open(database,'wb') as file:
-    #    pickle.dump([commithash,info],file)
+
     with open(database, "w") as file:
         if len(info) == 4:
             json.dump(
@@ -469,7 +468,6 @@ def create_fasta_ref_from_hla_allele_data():
     write_reference(
         seq_out,
         [gene_set, allele_idx, lengths, gene_length],
-        # hla_fa, hla_idx, hla_p,
         config.hla_fa,
         config.hla_idx,
         config.hla_json,
@@ -482,7 +480,6 @@ def create_fasta_ref_from_hla_allele_data():
     write_reference(
         seq_out,
         [gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles],
-        # partial_fa, partial_idx, partial_p,
         config.partial_fa,
         config.partial_idx,
         config.partial_json,
@@ -503,9 +500,6 @@ def create_conversion_tables(reset=False):
     p_group = parse_hla_nomenclature(config.hla_nom_p)
     g_group = parse_hla_nomenclature(config.hla_nom_g)
 
-    # with open(hla_convert, 'wb') as file:
-    #    pickle.dump([p_group,g_group], file)
-    # todo, test this:
     with open(config.hla_convert_json, "w") as file:
         json.dump([p_group, g_group], file)
 
@@ -567,12 +561,6 @@ def build_reference(args):
 # -------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-
-    # with open(parameters, 'rb') as file:
-    #    _, _, versions = pickle.load(file)
-    #    temp1, temp2, versions = pickle.load(file)
-    # with open(parameters_json, 'w') as file:
-    #    json.dump([list(temp1),list(temp2),versions],file)
     with open(config.parameters_json, "r") as file:
         _, _, versions = json.load(file)
 
@@ -619,5 +607,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    build_reference(args)
+    build_reference(args.update, args.rebuild, args.version, args.commit, args.verbose)
 # -------------------------------------------------------------------------------

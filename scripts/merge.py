@@ -68,9 +68,6 @@ def process_json(json_files, indir, outdir, run, suffix):
         with open(file_path, "r") as file:
             genotypes[sample] = json.load(file)
 
-    # with open(file_out + '.json', 'w') as file:
-    #    json.dump(genotypes, file)
-
     genotypes_ = defaultdict(dict)
     for sample, genotype in genotypes.items():
         for gene, alleles in genotype.items():
@@ -134,10 +131,6 @@ def do_merging(args):
 
     if gene_count_files:
         process_json(gene_count_files, indir, outdir, args.run, "genes")
-
-    # if quant_files:
-    #    process_quant(quant_files, indir, outdir,
-    #            args.run, 'quant')
 
 
 if __name__ == "__main__":
