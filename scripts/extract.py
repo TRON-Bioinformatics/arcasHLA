@@ -171,20 +171,30 @@ def bam_to_fastq(bam, outdir, paired, temp, threads):
         run_command(["pigz", "-f", "-p", threads, "-S", ".gz", fq])
 
 
-def do_extraction(args):
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
+def do_extraction(
+    bam,
+    outdir="./",
+    single=False,
+    unmapped=False,
+    allreads=False,
+    threads="1",
+    temp="/tmp/",
+    keep_files=False,
+    log_file=None,
+    verbose=False,
+):
+    outdir = check_path(outdir)
+    temp = create_temp(temp)
 
-    sample = os.path.basename(args.bam).split(".")[0]
+    sample = os.path.basename(bam).split(".")[0]
 
     # Set up log file
-    if args.log:
-        log_file = args.log
-    else:
+    if not log_file:
         log_file = "".join([outdir, sample, ".extract.log"])
+
     with open(log_file, "w"):
         pass
-    if args.verbose:
+    if verbose:
         handlers = [log.FileHandler(log_file), log.StreamHandler()]
 
         log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
@@ -197,25 +207,21 @@ def do_extraction(args):
     hline()
     log.info(f"[log] Date: %s", str(date.today()))
     log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file: %s", args.bam)
-    log.info(
-        "[log] Read type: {}-end".format("paired" if not args.single else "single")
-    )
+    log.info(f"[log] Input file: %s", bam)
+    log.info("[log] Read type: {}-end".format("paired" if not single else "single"))
     hline()
 
     # Load names of regions outside chr6 with HLA loci
     with open(config.alt_decoys, "r") as file:
         alts = json.load(file)
 
-    if args.allreads:
-        bam_to_fastq(args.bam, outdir, not args.single, temp, args.threads)
+    if allreads:
+        bam_to_fastq(bam, outdir, not single, temp, threads)
 
     else:
-        extract_reads(
-            args.bam, outdir, not args.single, args.unmapped, alts, temp, args.threads
-        )
+        extract_reads(bam, outdir, not single, unmapped, alts, temp, threads)
 
-    remove_files(temp, args.keep_files)
+    remove_files(temp, keep_files)
 
     hline()
     log.info("")
@@ -225,7 +231,6 @@ def do_extraction(args):
 #   Main
 # -------------------------------------------------------------------------------
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         prog="arcasHLA extract",
         usage="%(prog)s [options] BAM file",
@@ -293,5 +298,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_extraction(args)
+    do_extraction(
+        args.bam,
+        args.outdir,
+        args.single,
+        args.unmapped,
+        args.allreads,
+        args.threads,
+        args.temp,
+        args.keep_files,
+        args.log,
+        args.verbose,
+    )
 # -------------------------------------------------------------------------------
