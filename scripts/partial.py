@@ -272,21 +272,39 @@ def type_partial(
     return complete_genotype
 
 
-def do_partial_genotyping(args):
-    if len(args.file) == 0:
+def do_partial_genotyping(
+    file,
+    genotype,
+    genes="all",
+    population="prior",
+    tolerance=10e-7,
+    max_iterations=1000,
+    drop_iterations=4,
+    drop_threshold=0.1,
+    zygosity_threshold=0.15,
+    avg=200,
+    std=20,
+    single=False,
+    outdir="./",
+    keep_files=False,
+    threads="1",
+    temp="/tmp/",
+    log_file=None,
+    verbose=False,
+):
+    if len(file) == 0:
         sys.exit("[genotype] Error: FASTQ or partial_alignment.p file required")
 
     # Set up directories and log file
-    sample = os.path.basename(args.file[0]).split(".")[0]
-    outdir = check_path(args.outdir)
-    temp = create_temp(args.temp)
-    if args.log:
-        log_file = args.log
-    else:
+    sample = os.path.basename(file[0]).split(".")[0]
+    outdir = check_path(outdir)
+    temp = create_temp(temp)
+
+    if not log_file:
         log_file = "".join([outdir, sample, ".partial_genotype.log"])
     with open(log_file, "w"):
         pass
-    if args.verbose:
+    if verbose:
         handlers = [log.FileHandler(log_file), log.StreamHandler()]
 
         log.basicConfig(level=log.DEBUG, format="%(message)s", handlers=handlers)
@@ -299,7 +317,7 @@ def do_partial_genotyping(args):
     hline()
     log.info(f"[log] Date: %s", str(date.today()))
     log.info(f"[log] Sample: %s", sample)
-    log.info(f"[log] Input file(s): %s", ", ".join(args.file))
+    log.info(f"[log] Input file(s): %s", ", ".join(file))
 
     prior = pd.read_csv(config.hla_freq, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
@@ -312,8 +330,8 @@ def do_partial_genotyping(args):
     #    reference_info = pickle.load(file)
     #    (commithash, (gene_set, allele_idx, exon_idx,
     #        lengths, partial_exons, partial_alleles)) = reference_info
-    with open(config.partial_json, "r") as file:
-        reference_info = json.load(file)
+    with open(config.partial_json, "r") as json_file:
+        reference_info = json.load(json_file)
         (
             commithash,
             (gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles),
@@ -322,7 +340,7 @@ def do_partial_genotyping(args):
         allele_idx = json.loads(allele_idx)
         exon_idx = json.loads(exon_idx)
         lengths = json.loads(lengths)
-        lengths = dict([a, int(x)] for a, x in lengths.items())
+        lengths = {a: int(x) for a, x in lengths.items()}
         partial_exons = json.loads(partial_exons)
         partial_alleles = set(partial_alleles)
 
@@ -330,29 +348,29 @@ def do_partial_genotyping(args):
     hline()
 
     # Runs transcript assembly if intermediate json not provided
-    if args.file[0].endswith(".partial_alignment.p"):
-        alignment_info = load_alignment(args.file[0], commithash, True)
+    if file[0].endswith(".partial_alignment.p"):
+        alignment_info = load_alignment(file[0], commithash, True)
     else:
         alignment_info = get_alignment(
-            args.file,
+            file,
             sample,
             config.partial_idx,
             reference_info,
             outdir,
             temp,
-            args.threads,
-            args.single,
+            threads,
+            single,
             True,
-            args.avg,
-            args.std,
+            avg,
+            std,
         )
     commithash, eq_idx, _, paired, align_stats, _ = alignment_info
 
     # Load alleles from arcasHLA genotype
-    with open(args.genotype, "r") as file:
+    with open(genotype, "r") as file:
         complete_genotypes = json.load(file)
 
-    genes = set(args.genes) & set(complete_genotypes.keys())
+    genes = set(genes) & set(complete_genotypes.keys())
 
     # Filter out alleles not returned by arcasHLA genotype
     eq_idx, allele_eq = filter_eqs(
@@ -378,13 +396,13 @@ def do_partial_genotyping(args):
             partial_exons,
             complete_genotype,
             partial_alleles,
-            args.population,
+            population,
             prior,
-            args.tolerance,
-            args.max_iterations,
-            args.drop_iterations,
-            args.drop_threshold,
-            args.zygosity_threshold,
+            tolerance,
+            max_iterations,
+            drop_iterations,
+            drop_threshold,
+            zygosity_threshold,
         )
 
         partial_results[gene] = genotype
@@ -396,7 +414,7 @@ def do_partial_genotyping(args):
     with open("".join([outdir, sample, ".partial_genotype.json"]), "w") as file:
         json.dump(partial_results, file)
 
-    remove_files(temp, args.keep_files)
+    remove_files(temp, keep_files)
 
     hline()
     log.info("")
@@ -623,6 +641,25 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_partial_genotyping(args)
+    do_partial_genotyping(
+        args.file,
+        args.genotype,
+        args.genes,
+        args.population,
+        args.tolerance,
+        args.max_iterations,
+        args.drop_iterations,
+        args.drop_threshold,
+        args.zygosity_threshold,
+        args.avg,
+        args.std,
+        args.single,
+        args.outdir,
+        args.keep_files,
+        args.threads,
+        args.temp,
+        args.log,
+        args.verbose,
+    )
 
 # -----------------------------------------------------------------------------
