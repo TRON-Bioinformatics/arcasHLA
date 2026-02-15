@@ -35,11 +35,6 @@ from arcas_utilities import process_allele
 
 # -------------------------------------------------------------------------------
 
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-
 
 def convert_allele(allele, resolution):
     """Checks nomenclature of input allele and returns converted allele."""

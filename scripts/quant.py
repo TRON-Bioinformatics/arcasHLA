@@ -36,10 +36,6 @@ from collections import defaultdict
 import config
 from arcas_utilities import *
 
-# -------------------------------------------------------------------------------
-
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
 
 # -------------------------------------------------------------------------------
 def arg_check_files(parser, arg):

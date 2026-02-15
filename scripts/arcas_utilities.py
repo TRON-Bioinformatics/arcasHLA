@@ -30,11 +30,6 @@ from subprocess import PIPE, run
 
 # -------------------------------------------------------------------------------
 
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-
 
 def process_allele(allele, n, keep_alpha=True):
     """Lowers allele resolution to n-fields."""

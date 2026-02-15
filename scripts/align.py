@@ -33,11 +33,6 @@ from collections import defaultdict
 from reference import get_exon_combinations
 from arcas_utilities import *
 
-# -------------------------------------------------------------------------------
-
-__version__ = "0.4.0"
-__date__ = "2022-01-27"
-
 # -----------------------------------------------------------------------------
 # Process and align FASTQ input
 # -----------------------------------------------------------------------------
