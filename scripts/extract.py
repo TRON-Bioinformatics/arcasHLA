@@ -33,6 +33,8 @@ import logging as log
 from datetime import date
 from os.path import isfile
 from argparse import RawTextHelpFormatter
+
+import config
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
@@ -253,8 +255,6 @@ if __name__ == "__main__":
 
     sample = os.path.basename(args.bam).split(".")[0]
 
-    datDir = os.path.dirname(os.path.realpath(__file__)) + "/../dat/"
-
     # Set up log file
     if args.log:
         log_file = args.log
@@ -282,9 +282,7 @@ if __name__ == "__main__":
     hline()
 
     # Load names of regions outside chr6 with HLA loci
-    # with open(datDir + '/info/decoys_alts.p', 'rb') as file:
-    #    alts = pickle.load(file)
-    with open(datDir + "info/decoys_alts.json", "r") as file:
+    with open(config.alt_decoys, "r") as file:
         alts = json.load(file)
 
     if args.allreads:

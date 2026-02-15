@@ -41,6 +41,7 @@ from textwrap import wrap
 from collections import Counter, defaultdict
 from itertools import combinations
 
+import config
 from reference import ensure_ref_exists
 from arcas_utilities import *
 
@@ -48,13 +49,6 @@ from arcas_utilities import *
 
 __version__ = "0.4.0"
 __date__ = "2022-01-27"
-
-# -------------------------------------------------------------------------------
-ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
-
-INFO_DIR = ROOT_DIR + "dat/info/"
-PARAMETERS_JSON = INFO_DIR + "parameters.json"
-
 
 # -------------------------------------------------------------------------------
 def arg_check_files(parser, arg):
@@ -76,7 +70,7 @@ if __name__ == "__main__":
 
     # with open(parameters, 'rb') as file:
     #    genes, populations, databases = pickle.load(file)
-    with open(PARAMETERS_JSON, "r") as file:
+    with open(config.parameters_json, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
         populations = set(populations)

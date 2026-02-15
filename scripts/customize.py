@@ -41,6 +41,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
+import config
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
@@ -52,26 +53,9 @@ __date__ = "2022-01-27"
 #   Paths and filenames
 # -------------------------------------------------------------------------------
 
-ROOT_DIR = os.path.dirname(os.path.realpath(__file__)) + "/../"
-
-REF_DIR = ROOT_DIR + "dat/ref/"
-ALLELE_GROUP_JSON = REF_DIR + "allele_groups.json"
-CDNA_JSON = REF_DIR + "cDNA.json"
-CDNA_SINGLE_JSON = REF_DIR + "cDNA.single.json"
-HLA_TRANSCRIPTS_JSON = REF_DIR + "hla_transcripts.json"
-REF_ZIP_ARCHIVE = REF_DIR + "customization_reference_fastas.tar.gz"
-ZIPPED_REF_FILES = {
-    "GRCh38_chr6": REF_DIR + "GRCh38.chr6.noHLA.fasta",
-    "GRCh38": REF_DIR + "GRCh38.all.noHLA.fasta",
-    "dummy_HLA_fa": REF_DIR + "GRCh38.chr6.HLA.fasta",
-}
-
-INFO_DIR = ROOT_DIR + "dat/info/"
-PARAMETERS_JSON = INFO_DIR + "parameters.json"
-
 
 class ZippedRefFile:
-    _ref_file_archive = REF_ZIP_ARCHIVE
+    _ref_file_archive = config.ref_zip_archive
 
     @classmethod
     def _get_ref_file_from_archive(cls, ref_file: str) -> None:
@@ -96,7 +80,7 @@ class ZippedRefFile:
         Get the path to one of the reference fasta files, ensuring the file is
         present by unzipping the archive if it is not.
         """
-        ref_path = ZIPPED_REF_FILES[ref_name]
+        ref_path = config.zipped_ref_files[ref_name]
 
         if not os.path.exists(ref_path):
             cls._get_ref_file_from_archive(os.path.basename(ref_path))
@@ -126,7 +110,7 @@ def build_custom_reference(
             SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38"), "fasta")
         )
 
-    with open(HLA_TRANSCRIPTS_JSON, "r") as file:
+    with open(config.hla_transcripts_json, "r") as file:
         HLA_transcripts = json.load(file)
 
     genes = {allele_id[:-1] for allele_id in genotype.keys()}
@@ -134,19 +118,19 @@ def build_custom_reference(
         for transcript in HLA_transcripts[gene]:
             transcriptome.append(dummy_HLA_dict[transcript])
 
-    with open(ALLELE_GROUP_JSON, "r") as file:
+    with open(config.allele_group_json, "r") as file:
         groups_temp = json.load(file)
         groups = defaultdict(list)
         for k, v in groups_temp.items():
             groups[k] = set(v)
 
-    with open(CDNA_JSON, "r") as file:
+    with open(config.cdna_json, "r") as file:
         cDNA_temp = json.load(file)
         cDNA = defaultdict(list)
         for k, v in cDNA_temp.items():
             cDNA[k] = set(v)
 
-    with open(CDNA_SINGLE_JSON, "r") as file:
+    with open(config.cdna_single_json, "r") as file:
         cDNA_single = json.load(file)
 
     indv_fasta = "".join([temp, subject, ".fasta"])
@@ -233,7 +217,7 @@ def process_str_genotype(input_genotype, genes):
 
 
 def main(args: list[str]) -> None:
-    with open(PARAMETERS_JSON, "r") as file:
+    with open(config.parameters_json, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
         populations = set(populations)
@@ -403,7 +387,7 @@ def main(args: list[str]) -> None:
             "parallel",
             "-j",
             args.threads,
-            ROOT_DIR + "/arcasHLA",
+            config.root_dir + "/arcasHLA",
             "customize",
             "--subject {//}",
             "--genotype {/}",
