@@ -26,6 +26,7 @@ import os
 import re
 import json
 import pickle
+import sys
 import argparse
 
 import pandas as pd
@@ -267,7 +268,7 @@ def arg_check_files(parser, arg):
         return arg
 
 
-if __name__ == "__main__":
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA quant",
         usage="%(prog)s [options] FASTQs",
@@ -366,23 +367,28 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
     do_quantification(
-        args.file,
-        args.sample,
-        args.ref,
-        args.avg,
-        args.std,
-        args.single,
-        args.LOH,
-        args.purity,
-        args.ploidy,
-        args.threads,
-        args.outdir,
-        args.keep_files,
-        args.temp,
-        args.verbose,
+        parsed_args.file,
+        parsed_args.sample,
+        parsed_args.ref,
+        parsed_args.avg,
+        parsed_args.std,
+        parsed_args.single,
+        parsed_args.LOH,
+        parsed_args.purity,
+        parsed_args.ploidy,
+        parsed_args.threads,
+        parsed_args.outdir,
+        parsed_args.keep_files,
+        parsed_args.temp,
+        parsed_args.verbose,
     )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
 
 # -----------------------------------------------------------------------------

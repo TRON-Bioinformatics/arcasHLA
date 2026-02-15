@@ -562,7 +562,8 @@ def build_reference(
 #   Main
 # -------------------------------------------------------------------------------
 
-if __name__ == "__main__":
+
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA reference",
         usage="%(prog)s [options]",
@@ -604,7 +605,18 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args()
 
-    build_reference(args.update, args.rebuild, args.version, args.commit, args.verbose)
+    build_reference(
+        parsed_args.update,
+        parsed_args.rebuild,
+        parsed_args.version,
+        parsed_args.commit,
+        parsed_args.verbose,
+    )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
 # -------------------------------------------------------------------------------

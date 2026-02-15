@@ -146,8 +146,8 @@ def do_conversion(file: str, resolution_string, outfile=None, force=False):
 
 # -------------------------------------------------------------------------------
 
-if __name__ == "__main__":
 
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA convert",
         usage="%(prog)s [options]",
@@ -197,8 +197,15 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
-    do_conversion(args.file, args.resolution, args.outfile, args.force)
+    do_conversion(
+        parsed_args.file, parsed_args.resolution, parsed_args.outfile, parsed_args.force
+    )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
 
 # -------------------------------------------------------------------------------

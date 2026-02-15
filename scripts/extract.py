@@ -230,7 +230,9 @@ def do_extraction(
 # -------------------------------------------------------------------------------
 #   Main
 # -------------------------------------------------------------------------------
-if __name__ == "__main__":
+
+
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA extract",
         usage="%(prog)s [options] BAM file",
@@ -296,18 +298,23 @@ if __name__ == "__main__":
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
     do_extraction(
-        args.bam,
-        args.outdir,
-        args.single,
-        args.unmapped,
-        args.allreads,
-        args.threads,
-        args.temp,
-        args.keep_files,
-        args.log,
-        args.verbose,
+        parsed_args.bam,
+        parsed_args.outdir,
+        parsed_args.single,
+        parsed_args.unmapped,
+        parsed_args.allreads,
+        parsed_args.threads,
+        parsed_args.temp,
+        parsed_args.keep_files,
+        parsed_args.log,
+        parsed_args.verbose,
     )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
 # -------------------------------------------------------------------------------

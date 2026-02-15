@@ -694,7 +694,7 @@ def arg_check_threshold(parser, arg):
         parser.error("The threshold is invalid.")
 
 
-if __name__ == "__main__":
+def main(args):
     parser = argparse.ArgumentParser(
         prog="arcasHLA genotype",
         usage="%(prog)s [options] FASTQs " + "or alignment.p file",
@@ -846,27 +846,31 @@ if __name__ == "__main__":
         default=False,
     )
 
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
 
     do_genotyping(
-        args.file,
-        args.genes,
-        args.population,
-        args.tolerance,
-        args.max_iterations,
-        args.drop_iterations,
-        args.drop_threshold,
-        args.zygosity_threshold,
-        args.min_count,
-        args.avg,
-        args.std,
-        args.single,
-        args.outdir,
-        args.threads,
-        args.keep_files,
-        args.temp,
-        args.log,
-        args.verbose,
+        parsed_args.file,
+        parsed_args.genes,
+        parsed_args.population,
+        parsed_args.tolerance,
+        parsed_args.max_iterations,
+        parsed_args.drop_iterations,
+        parsed_args.drop_threshold,
+        parsed_args.zygosity_threshold,
+        parsed_args.min_count,
+        parsed_args.avg,
+        parsed_args.std,
+        parsed_args.single,
+        parsed_args.outdir,
+        parsed_args.threads,
+        parsed_args.keep_files,
+        parsed_args.temp,
+        parsed_args.log,
+        parsed_args.verbose,
     )
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
 
 # -----------------------------------------------------------------------------
