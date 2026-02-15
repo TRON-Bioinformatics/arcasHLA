@@ -526,10 +526,6 @@ def do_genotyping(args):
     ensure_ref_exists()
 
     # Loads reference information
-    # with open(hla_p, 'rb') as file:
-    #    reference_info = pickle.load(file)
-    #    (commithash,(gene_set, allele_idx,
-    #     lengths, gene_length)) = reference_info
     with open(config.hla_json, "r") as file:
         reference_info = json.load(file)
         (commithash, (gene_set, allele_idx, lengths, gene_length)) = reference_info
@@ -740,16 +736,6 @@ if __name__ == "__main__":
         metavar="",
         type=lambda x: arg_check_population(parser, x),
     )
-    """
-    parser.add_argument('-d',
-                        '--database', 
-                        type=str,
-                        choices = databases,
-                        help='frequency database\n  default: gold_smoothed10\n'+
-                             '  options: ' + ', '.join(databases) + '\n\n',
-                        default='freq', 
-                        metavar='')
-    """
 
     parser.add_argument(
         "--tolerance",

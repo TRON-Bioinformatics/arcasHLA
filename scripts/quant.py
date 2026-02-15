@@ -92,9 +92,6 @@ def do_quantification(args):
         with open(args.file[1], "r") as file:
             previous_results = json.load(file)
 
-        # total_reads = previous_results['total_count']
-        # aligned_reads = previous_results['aligned_reads']
-
         kallisto_results = pd.read_csv(args.file[0], sep="\t")
 
     idx_allele = defaultdict(set)
@@ -258,8 +255,6 @@ def arg_check_files(parser, arg):
 
 if __name__ == "__main__":
 
-    # with open(parameters, 'rb') as file:
-    #    genes, populations, databases = pickle.load(file)
     with open(config.parameters_json, "r") as file:
         genes, populations, _ = json.load(file)
         genes = set(genes)
