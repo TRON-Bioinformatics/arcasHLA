@@ -96,6 +96,54 @@ def convert_allele(allele, resolution):
     return allele
 
 
+def do_conversion(args):
+    # p_group, g_group = pickle.load(open(hla_convert,'rb'))
+    # to do, test this
+    with open(config.hla_convert_json, "r") as file:
+        p_group, g_group = json.load(file)
+
+    # Check input resolution
+    accepted_fields = {"1", "2", "3", "4"}
+    accepted_groupings = {"g-group", "p-group"}
+
+    resolution = None
+
+    if args.resolution in accepted_fields:
+        resolution = int(args.resolution)
+    elif args.resolution.lower() in accepted_groupings:
+        resolution = args.resolution.lower()
+
+    if not resolution:
+        sys.exit(
+            "[convert] Error: output resolution is needed "
+            + "(1, 2, 3, g-group, p-group)."
+        )
+
+    # Create outfile name
+    if not args.outfile:
+        outfile = [
+            os.path.splitext(os.path.basename(args.file))[0],
+            args.resolution.lower(),
+            "tsv",
+        ]
+        outfile = ".".join(outfile)
+    else:
+        outfile = args.outfile
+
+    # Load input genotypes
+    df_genotypes = pd.read_csv(args.file, sep="\t").set_index("subject")
+    genotypes = df_genotypes.to_dict("index")
+
+    for subject, genotype in genotypes.items():
+        for gene, allele in genotype.items():
+            if type(allele) != str:
+                continue
+
+            genotypes[subject][gene] = convert_allele(allele, resolution)
+
+    pd.DataFrame(genotypes).T.rename_axis("subject").to_csv(outfile, sep="\t")
+
+
 # -------------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -151,50 +199,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # p_group, g_group = pickle.load(open(hla_convert,'rb'))
-    # to do, test this
-    with open(config.hla_convert_json, "r") as file:
-        p_group, g_group = json.load(file)
-
-    # Check input resolution
-    accepted_fields = {"1", "2", "3", "4"}
-    accepted_groupings = {"g-group", "p-group"}
-
-    resolution = None
-
-    if args.resolution in accepted_fields:
-        resolution = int(args.resolution)
-    elif args.resolution.lower() in accepted_groupings:
-        resolution = args.resolution.lower()
-
-    if not resolution:
-        sys.exit(
-            "[convert] Error: output resolution is needed "
-            + "(1, 2, 3, g-group, p-group)."
-        )
-
-    # Create outfile name
-    if not args.outfile:
-        outfile = [
-            os.path.splitext(os.path.basename(args.file))[0],
-            args.resolution.lower(),
-            "tsv",
-        ]
-        outfile = ".".join(outfile)
-    else:
-        outfile = args.outfile
-
-    # Load input genotypes
-    df_genotypes = pd.read_csv(args.file, sep="\t").set_index("subject")
-    genotypes = df_genotypes.to_dict("index")
-
-    for subject, genotype in genotypes.items():
-        for gene, allele in genotype.items():
-            if type(allele) != str:
-                continue
-
-            genotypes[subject][gene] = convert_allele(allele, resolution)
-
-    pd.DataFrame(genotypes).T.rename_axis("subject").to_csv(outfile, sep="\t")
+    do_conversion(args)
 
 # -------------------------------------------------------------------------------

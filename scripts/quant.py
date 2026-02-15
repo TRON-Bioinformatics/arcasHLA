@@ -37,131 +37,7 @@ import config
 from arcas_utilities import *
 
 
-# -------------------------------------------------------------------------------
-def arg_check_files(parser, arg):
-    for file in arg.split():
-        if not os.path.isfile(file):
-            parser.error("The file %s does not exist." % file)
-        elif not (
-            file.endswith("alignment.p")
-            or file.endswith(".fq.gz")
-            or file.endswith(".fastq.gz")
-            or file.endswith(".tsv")
-            or file.endswith(".json")
-        ):
-            parser.error("The format of %s is invalid." % file)
-        return arg
-
-
-if __name__ == "__main__":
-
-    # with open(parameters, 'rb') as file:
-    #    genes, populations, databases = pickle.load(file)
-    with open(config.parameters_json, "r") as file:
-        genes, populations, _ = json.load(file)
-        genes = set(genes)
-        populations = set(populations)
-
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA quant",
-        usage="%(prog)s [options] FASTQs",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
-
-    parser.add_argument(
-        "file",
-        help="list of fastq files",
-        nargs="*",
-        type=lambda x: arg_check_files(parser, x),
-    )
-
-    parser.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        help="show this help message and exit\n\n",
-        default=argparse.SUPPRESS,
-    )
-
-    parser.add_argument("--sample", help="sample name", type=str, default=None)
-
-    parser.add_argument(
-        "--ref",
-        type=str,
-        help='arcasHLA quant_ref path (e.g. "/path/to/ref/sample")\n  ',
-        default=None,
-        metavar="",
-    )
-
-    parser.add_argument(
-        "-o", "--outdir", type=str, help="out directory\n\n", default="./", metavar=""
-    )
-
-    parser.add_argument(
-        "--temp", type=str, help="temp directory\n\n", default="/tmp/", metavar=""
-    )
-
-    parser.add_argument(
-        "--keep_files",
-        action="count",
-        help="keep intermediate files\n\n",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--single",
-        action="store_true",
-        help="Include flag if single-end reads. Default is paired-end.\n\n",
-        default=False,
-    )
-
-    parser.add_argument(
-        "-l",
-        "--avg",
-        type=int,
-        help="Estimated average fragment length "
-        + "for single-end reads\n  default: 200\n\n",
-        default=200,
-    )
-
-    parser.add_argument(
-        "-s",
-        "--std",
-        type=int,
-        help="Estimated standard deviation of fragment length "
-        + "for single-end reads\n  default: 20\n\n",
-        default=20,
-    )
-
-    parser.add_argument(
-        "--LOH",
-        action="store_true",
-        help="Include flag for estimated loss of heterozygosity. "
-        + "Must provide purity and ploidy estimates.\n\n",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--purity",
-        type=float,
-        help="Estimated purity of sample\n  default: 1.0\n\n",
-        default=1.0,
-    )
-
-    parser.add_argument(
-        "--ploidy",
-        type=int,
-        help="Estimated ploidy of sample\n  default: 2.0\n\n",
-        default=2.0,
-    )
-
-    parser.add_argument("-t", "--threads", type=str, default="1", metavar="")
-
-    parser.add_argument("-v", "--verbose", action="count", default=False)
-
-    args = parser.parse_args()
-
+def do_quantification(args):
     paired = not args.single
 
     if args.sample == None:
@@ -362,5 +238,133 @@ if __name__ == "__main__":
                 corrections_df.at[0, gene + "_lost"] = "none"
 
         corrections_df.to_csv(loh_results_tsv, sep="\t", index=False)
+
+
+# -------------------------------------------------------------------------------
+def arg_check_files(parser, arg):
+    for file in arg.split():
+        if not os.path.isfile(file):
+            parser.error("The file %s does not exist." % file)
+        elif not (
+            file.endswith("alignment.p")
+            or file.endswith(".fq.gz")
+            or file.endswith(".fastq.gz")
+            or file.endswith(".tsv")
+            or file.endswith(".json")
+        ):
+            parser.error("The format of %s is invalid." % file)
+        return arg
+
+
+if __name__ == "__main__":
+
+    # with open(parameters, 'rb') as file:
+    #    genes, populations, databases = pickle.load(file)
+    with open(config.parameters_json, "r") as file:
+        genes, populations, _ = json.load(file)
+        genes = set(genes)
+        populations = set(populations)
+
+    parser = argparse.ArgumentParser(
+        prog="arcasHLA quant",
+        usage="%(prog)s [options] FASTQs",
+        add_help=False,
+        formatter_class=RawTextHelpFormatter,
+    )
+
+    parser.add_argument(
+        "file",
+        help="list of fastq files",
+        nargs="*",
+        type=lambda x: arg_check_files(parser, x),
+    )
+
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        help="show this help message and exit\n\n",
+        default=argparse.SUPPRESS,
+    )
+
+    parser.add_argument("--sample", help="sample name", type=str, default=None)
+
+    parser.add_argument(
+        "--ref",
+        type=str,
+        help='arcasHLA quant_ref path (e.g. "/path/to/ref/sample")\n  ',
+        default=None,
+        metavar="",
+    )
+
+    parser.add_argument(
+        "-o", "--outdir", type=str, help="out directory\n\n", default="./", metavar=""
+    )
+
+    parser.add_argument(
+        "--temp", type=str, help="temp directory\n\n", default="/tmp/", metavar=""
+    )
+
+    parser.add_argument(
+        "--keep_files",
+        action="count",
+        help="keep intermediate files\n\n",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--single",
+        action="store_true",
+        help="Include flag if single-end reads. Default is paired-end.\n\n",
+        default=False,
+    )
+
+    parser.add_argument(
+        "-l",
+        "--avg",
+        type=int,
+        help="Estimated average fragment length "
+        + "for single-end reads\n  default: 200\n\n",
+        default=200,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--std",
+        type=int,
+        help="Estimated standard deviation of fragment length "
+        + "for single-end reads\n  default: 20\n\n",
+        default=20,
+    )
+
+    parser.add_argument(
+        "--LOH",
+        action="store_true",
+        help="Include flag for estimated loss of heterozygosity. "
+        + "Must provide purity and ploidy estimates.\n\n",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--purity",
+        type=float,
+        help="Estimated purity of sample\n  default: 1.0\n\n",
+        default=1.0,
+    )
+
+    parser.add_argument(
+        "--ploidy",
+        type=int,
+        help="Estimated ploidy of sample\n  default: 2.0\n\n",
+        default=2.0,
+    )
+
+    parser.add_argument("-t", "--threads", type=str, default="1", metavar="")
+
+    parser.add_argument("-v", "--verbose", action="count", default=False)
+
+    args = parser.parse_args()
+
+    do_quantification(args)
 
 # -----------------------------------------------------------------------------

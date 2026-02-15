@@ -211,98 +211,7 @@ def process_str_genotype(input_genotype, genes):
     return genotype
 
 
-def main(args: list[str]) -> None:
-    with open(config.parameters_json, "r") as file:
-        genes, populations, _ = json.load(file)
-        genes = set(genes)
-        populations = set(populations)
-
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA customize",
-        usage="%(prog)s [options]",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
-
-    parser.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        help="show this help message and exit\n\n",
-        default=argparse.SUPPRESS,
-    )
-
-    parser.add_argument(
-        "-G",
-        "--genotype",
-        help="comma-separated list of HLA alleles (e.g. A*01:01,A*11:01,...)\narcasHLA output genotype.json or genotypes.json \nor tsv with format specified in README.md",
-        metavar="",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-s",
-        "--subject",
-        help="subject name, only required for list of alleles",
-        default="",
-        metavar="",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-g",
-        "--genes",
-        help="comma separated list of HLA genes\n"
-        + "default: all\n"
-        + "\n".join(wrap("options: " + ", ".join(sorted(genes)), 60))
-        + "\n\n",
-        default="",
-        metavar="",
-        type=str,
-    )
-
-    parser.add_argument(
-        "--transcriptome",
-        type=str,
-        help="transcripts to include besides input HLAs\n options: full, chr6, none\n  default: full\n\n",
-        default="full",
-    )
-
-    parser.add_argument(
-        "--resolution",
-        type=int,
-        help="genotype resolution, only use >2 when typing performed with assay or Sanger sequencing\n  default: 2\n\n",
-        default=2,
-    )
-
-    parser.add_argument(
-        "--grouping",
-        type=str,
-        help="type/number of transcripts to include per allele\n single - one 3-field resolution transcript per allele (e.g. A*01:01:01)\ng-group - all transcripts with identical binding regions \n  default: protein group - all transcripts with identical protein types (2 fields the same)\n\n",
-        default="protein-group",
-    )
-
-    parser.add_argument(
-        "-o", "--outdir", type=str, help="out directory\n\n", default="./", metavar=""
-    )
-
-    parser.add_argument(
-        "--temp", type=str, help="temp directory\n\n", default="/tmp/", metavar=""
-    )
-
-    parser.add_argument(
-        "--keep_files",
-        action="count",
-        help="keep intermediate files\n\n",
-        default=False,
-    )
-
-    parser.add_argument("-t", "--threads", type=str, default="1", metavar="")
-
-    parser.add_argument("-v", "--verbose", action="count", default=False)
-
-    args = parser.parse_args(args)
-
+def do_customization(args):
     if args.resolution != 2:
         sys.exit("[customize] only 2-field resolution supported at this time.")
 
@@ -413,6 +322,101 @@ def main(args: list[str]) -> None:
         build_custom_reference(
             args.subject, genotype, args.grouping, args.transcriptome, temp, outdir
         )
+
+
+def main(args: list[str]) -> None:
+    with open(config.parameters_json, "r") as file:
+        genes, populations, _ = json.load(file)
+        genes = set(genes)
+        populations = set(populations)
+
+    parser = argparse.ArgumentParser(
+        prog="arcasHLA customize",
+        usage="%(prog)s [options]",
+        add_help=False,
+        formatter_class=RawTextHelpFormatter,
+    )
+
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        help="show this help message and exit\n\n",
+        default=argparse.SUPPRESS,
+    )
+
+    parser.add_argument(
+        "-G",
+        "--genotype",
+        help="comma-separated list of HLA alleles (e.g. A*01:01,A*11:01,...)\narcasHLA output genotype.json or genotypes.json \nor tsv with format specified in README.md",
+        metavar="",
+        type=str,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--subject",
+        help="subject name, only required for list of alleles",
+        default="",
+        metavar="",
+        type=str,
+    )
+
+    parser.add_argument(
+        "-g",
+        "--genes",
+        help="comma separated list of HLA genes\n"
+        + "default: all\n"
+        + "\n".join(wrap("options: " + ", ".join(sorted(genes)), 60))
+        + "\n\n",
+        default="",
+        metavar="",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--transcriptome",
+        type=str,
+        help="transcripts to include besides input HLAs\n options: full, chr6, none\n  default: full\n\n",
+        default="full",
+    )
+
+    parser.add_argument(
+        "--resolution",
+        type=int,
+        help="genotype resolution, only use >2 when typing performed with assay or Sanger sequencing\n  default: 2\n\n",
+        default=2,
+    )
+
+    parser.add_argument(
+        "--grouping",
+        type=str,
+        help="type/number of transcripts to include per allele\n single - one 3-field resolution transcript per allele (e.g. A*01:01:01)\ng-group - all transcripts with identical binding regions \n  default: protein group - all transcripts with identical protein types (2 fields the same)\n\n",
+        default="protein-group",
+    )
+
+    parser.add_argument(
+        "-o", "--outdir", type=str, help="out directory\n\n", default="./", metavar=""
+    )
+
+    parser.add_argument(
+        "--temp", type=str, help="temp directory\n\n", default="/tmp/", metavar=""
+    )
+
+    parser.add_argument(
+        "--keep_files",
+        action="count",
+        help="keep intermediate files\n\n",
+        default=False,
+    )
+
+    parser.add_argument("-t", "--threads", type=str, default="1", metavar="")
+
+    parser.add_argument("-v", "--verbose", action="count", default=False)
+
+    args = parser.parse_args(args)
+
+    do_customization(args)
 
 
 if __name__ == "__main__":
