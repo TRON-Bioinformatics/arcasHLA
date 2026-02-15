@@ -211,76 +211,81 @@ def process_str_genotype(input_genotype, genes):
     return genotype
 
 
-def do_customization(args):
-    if args.resolution != 2:
+def do_customization(
+    genotype,
+    subject="",
+    genes="",
+    transcriptome="full",
+    resolution=2,
+    grouping="protein-group",
+    outdir="./",
+    threads="1",
+    keep_files=False,
+    temp="/tmp/",
+    verbose=False,
+):
+    if resolution != 2:
         sys.exit("[customize] only 2-field resolution supported at this time.")
 
-    outdir = check_path(args.outdir)
-    temp = args.temp
+    outdir = check_path(outdir)
 
-    if len(args.genes) > 0:
-        genes = set(args.genes.split(","))
+    if len(genes) > 0:
+        genes = set(genes.split(","))
     else:
         genes = None
 
-    if args.genotype.endswith("genotype.json"):
-        if args.subject:
-            subject = args.subject
-        else:
-            subject = os.path.basename(args.genotype).split(".")[0]
+    if genotype.endswith("genotype.json"):
+        if not subject:
+            subject = os.path.basename(genotype).split(".")[0]
 
-        if args.verbose:
+        if verbose:
             print("[customize] Building reference for", subject)
 
-        with open(args.genotype, "r") as file:
+        with open(genotype, "r") as file:
             input_genotype = json.load(file)
 
         genotype = process_json_genotype(input_genotype, genes)
 
-        build_custom_reference(
-            subject, genotype, args.grouping, args.transcriptome, temp, outdir
-        )
+        build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
 
-    elif args.genotype.endswith(".genotypes.json") or args.genotype.endswith(".tsv"):
+    elif genotype.endswith(".genotypes.json") or genotype.endswith(".tsv"):
         temp = create_temp(temp)
 
-        if args.verbose:
-            print(
-                "[customize] Building references from", os.path.basename(args.genotype)
-            )
+        if verbose:
+            print("[customize] Building references from", os.path.basename(genotype))
 
         genotypes = dict()
-        if args.genotype.endswith("genotypes.json"):
-            with open(args.genotype, "r") as file:
+        if genotype.endswith("genotypes.json"):
+            with open(genotype, "r") as file:
                 input_genotypes = json.load(file)
-            for subject, genotype in input_genotypes.items():
+            for type_subject, genotype in input_genotypes.items():
                 genotype = ",".join(process_json_genotype(genotype, genes).values())
-                genotypes[subject] = genotype
+                genotypes[type_subject] = genotype
 
         else:
             genotypes = (
-                pd.read_csv(args.genotype, sep="\t")
-                .set_index("subject")
-                .to_dict("index")
+                pd.read_csv(genotype, sep="\t").set_index("subject").to_dict("index")
             )
-            for subject, genotype in genotypes.items():
+            for type_subject, genotype in genotypes.items():
                 if genes:
-                    genotypes[subject] = ",".join(
+                    genotypes[type_subject] = ",".join(
                         {
                             allele
-                            for allele_id, allele in genotypes[subject].items()
+                            for _, allele in genotypes[type_subject].items()
                             if allele[:-1] in genes
                         }
                     )
                 else:
-                    genotypes[subject] = ",".join(genotype.values())
+                    genotypes[type_subject] = ",".join(genotype.values())
+
         subject_file = temp + "subjects.txt"
+
         with open(subject_file, "w") as file:
             file.write(
                 "\n".join(
                     [
-                        subject + "/" + genotype
-                        for subject, genotype in genotypes.items()
+                        str(type_subject) + "/" + str(genotype)
+                        for type_subject, genotype in genotypes.items()
                     ]
                 )
             )
@@ -290,38 +295,36 @@ def do_customization(args):
             "|",
             "parallel",
             "-j",
-            args.threads,
+            threads,
             config.root_dir + "/arcasHLA",
             "customize",
             "--subject {//}",
             "--genotype {/}",
             "--resolution",
-            args.resolution,
+            resolution,
             "--grouping",
-            args.grouping,
+            grouping,
             "--transcriptome",
-            args.transcriptome,
+            transcriptome,
             "--outdir",
             outdir + "/{//}",
             "--temp",
             temp + "/{//}",
         ]
 
-        if args.verbose:
+        if verbose:
             command.append("--verbose")
 
         print(" ".join([str(i) for i in command]))
         run_command(command)
 
-        if not args.keep_files:
+        if not keep_files:
             run_command(["rm -rf", temp])
 
     else:
-        genotype = process_str_genotype(args.genotype, genes)
+        genotype = process_str_genotype(genotype, genes)
 
-        build_custom_reference(
-            args.subject, genotype, args.grouping, args.transcriptome, temp, outdir
-        )
+        build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
 
 
 def main(args: list[str]) -> None:
@@ -409,9 +412,21 @@ def main(args: list[str]) -> None:
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    args = parser.parse_args(args)
+    parsed_args = parser.parse_args(args)
 
-    do_customization(args)
+    do_customization(
+        parsed_args.genotype,
+        parsed_args.subject,
+        parsed_args.genes,
+        parsed_args.transcriptome,
+        parsed_args.resolution,
+        parsed_args.grouping,
+        parsed_args.outdir,
+        parsed_args.threads,
+        parsed_args.keep_files,
+        parsed_args.temp,
+        parsed_args.verbose,
+    )
 
 
 if __name__ == "__main__":
