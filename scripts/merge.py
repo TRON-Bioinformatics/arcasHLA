@@ -115,22 +115,22 @@ def process_quant(json_files, indir, outdir, run, suffix):
         json.dump(all_results, file)
 
 
-def do_merging(args):
-    if args.run:
-        args.run += "."
+def do_merging(run="", indir=".", outdir="."):
+    if run:
+        run += "."
 
-    indir, outdir = [check_path(path) for path in [args.indir, args.outdir]]
+    indir, outdir = [check_path(path) for path in [indir, outdir]]
 
     (genotype_files, partial_files, gene_count_files, quant_files) = get_paths(indir)
 
     if genotype_files:
-        process_json(genotype_files, indir, outdir, args.run, "genotypes")
+        process_json(genotype_files, indir, outdir, run, "genotypes")
 
     if partial_files:
-        process_json(partial_files, indir, outdir, args.run, "partial_genotypes")
+        process_json(partial_files, indir, outdir, run, "partial_genotypes")
 
     if gene_count_files:
-        process_json(gene_count_files, indir, outdir, args.run, "genes")
+        process_json(gene_count_files, indir, outdir, run, "genes")
 
 
 if __name__ == "__main__":
@@ -169,6 +169,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    do_merging(args)
+    do_merging(args.run, args.indir, args.outdir)
 
 # -------------------------------------------------------------------------------
