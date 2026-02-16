@@ -563,13 +563,19 @@ def build_reference(
 # -------------------------------------------------------------------------------
 
 
-def main(args):
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA reference",
-        usage="%(prog)s [options]",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
+def build_arg_parser(super_parser=None, subcommand_name="reference"):
+    parser_args = {
+        "prog": "arcasHLA reference",
+        "usage": "%(prog)s [options]",
+        "add_help": False,
+        "formatter_class": RawTextHelpFormatter,
+    }
+
+    if not super_parser:
+        parser = argparse.ArgumentParser(**parser_args)
+
+    else:
+        parser = super_parser.add_parser(name=subcommand_name, **parser_args)
 
     parser.add_argument(
         "-h",
@@ -605,15 +611,24 @@ def main(args):
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    parsed_args = parser.parse_args()
-
-    build_reference(
-        parsed_args.update,
-        parsed_args.rebuild,
-        parsed_args.version,
-        parsed_args.commit,
-        parsed_args.verbose,
+    parser.set_defaults(
+        run_function=lambda parsed_args: build_reference(
+            parsed_args.update,
+            parsed_args.rebuild,
+            parsed_args.version,
+            parsed_args.commit,
+            parsed_args.verbose,
+        )
     )
+
+    return parser
+
+
+def main(args):
+    parser = build_arg_parser()
+    parsed_args = parser.parse_args(args)
+
+    parsed_args.run_function(parsed_args)
 
 
 if __name__ == "__main__":

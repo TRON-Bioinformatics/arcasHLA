@@ -144,16 +144,19 @@ def do_conversion(file: str, resolution_string, outfile=None, force=False):
     pd.DataFrame(genotypes).T.rename_axis("subject").to_csv(outfile, sep="\t")
 
 
-# -------------------------------------------------------------------------------
+def build_arg_parser(super_parser=None, subcommand_name="convert"):
+    parser_args = {
+        "prog": "arcasHLA convert",
+        "usage": "%(prog)s [options]",
+        "add_help": False,
+        "formatter_class": RawTextHelpFormatter,
+    }
 
+    if not super_parser:
+        parser = argparse.ArgumentParser(**parser_args)
 
-def main(args):
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA convert",
-        usage="%(prog)s [options]",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
+    else:
+        parser = super_parser.add_parser(name=subcommand_name, **parser_args)
 
     parser.add_argument(
         "file",
@@ -197,11 +200,26 @@ def main(args):
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
+    parser.set_defaults(
+        run_function=lambda parsed_args: do_conversion(
+            parsed_args.file,
+            parsed_args.resolution,
+            parsed_args.outfile,
+            parsed_args.force,
+        )
+    )
+
+    return parser
+
+
+# -------------------------------------------------------------------------------
+
+
+def main(args):
+    parser = build_arg_parser()
     parsed_args = parser.parse_args(args)
 
-    do_conversion(
-        parsed_args.file, parsed_args.resolution, parsed_args.outfile, parsed_args.force
-    )
+    parsed_args.run_function(parsed_args)
 
 
 if __name__ == "__main__":

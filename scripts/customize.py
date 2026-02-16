@@ -327,13 +327,19 @@ def do_customization(
         build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
 
 
-def main(args) -> None:
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA customize",
-        usage="%(prog)s [options]",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
+def build_arg_parser(super_parser=None, subcommand_name="customize"):
+    parser_args = {
+        "prog": "arcasHLA customize",
+        "usage": "%(prog)s [options]",
+        "add_help": False,
+        "formatter_class": RawTextHelpFormatter,
+    }
+
+    if not super_parser:
+        parser = argparse.ArgumentParser(**parser_args)
+
+    else:
+        parser = super_parser.add_parser(name=subcommand_name, **parser_args)
 
     parser.add_argument(
         "-h",
@@ -412,21 +418,30 @@ def main(args) -> None:
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
+    parser.set_defaults(
+        run_function=lambda parsed_args: do_customization(
+            parsed_args.genotype,
+            parsed_args.subject,
+            parsed_args.genes,
+            parsed_args.transcriptome,
+            parsed_args.resolution,
+            parsed_args.grouping,
+            parsed_args.outdir,
+            parsed_args.threads,
+            parsed_args.keep_files,
+            parsed_args.temp,
+            parsed_args.verbose,
+        )
+    )
+
+    return parser
+
+
+def main(args):
+    parser = build_arg_parser()
     parsed_args = parser.parse_args(args)
 
-    do_customization(
-        parsed_args.genotype,
-        parsed_args.subject,
-        parsed_args.genes,
-        parsed_args.transcriptome,
-        parsed_args.resolution,
-        parsed_args.grouping,
-        parsed_args.outdir,
-        parsed_args.threads,
-        parsed_args.keep_files,
-        parsed_args.temp,
-        parsed_args.verbose,
-    )
+    parsed_args.run_function(parsed_args)
 
 
 if __name__ == "__main__":

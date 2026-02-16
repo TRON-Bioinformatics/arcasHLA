@@ -232,13 +232,19 @@ def do_extraction(
 # -------------------------------------------------------------------------------
 
 
-def main(args):
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA extract",
-        usage="%(prog)s [options] BAM file",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
+def build_arg_parser(super_parser=None, subcommand_name="extract"):
+    parser_args = {
+        "prog": "arcasHLA extract",
+        "usage": "%(prog)s [options] BAM file",
+        "add_help": False,
+        "formatter_class": RawTextHelpFormatter,
+    }
+
+    if not super_parser:
+        parser = argparse.ArgumentParser(**parser_args)
+
+    else:
+        parser = super_parser.add_parser(name=subcommand_name, **parser_args)
 
     parser.add_argument("bam", type=str, help="/path/to/sample.bam")
 
@@ -298,23 +304,29 @@ def main(args):
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
-    parsed_args = parser.parse_args(args)
-
-    do_extraction(
-        parsed_args.bam,
-        parsed_args.outdir,
-        parsed_args.single,
-        parsed_args.unmapped,
-        parsed_args.allreads,
-        parsed_args.threads,
-        parsed_args.temp,
-        parsed_args.keep_files,
-        parsed_args.log,
-        parsed_args.verbose,
+    parser.set_defaults(
+        run_function=lambda parsed_args: do_extraction(
+            parsed_args.bam,
+            parsed_args.outdir,
+            parsed_args.single,
+            parsed_args.unmapped,
+            parsed_args.allreads,
+            parsed_args.threads,
+            parsed_args.temp,
+            parsed_args.keep_files,
+            parsed_args.log,
+            parsed_args.verbose,
+        )
     )
 
+    return parser
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+
+def main(args):
+    parser = build_arg_parser()
+    parsed_args = parser.parse_args(args)
+
+    parsed_args.run_function(parsed_args)
+
 
 # -------------------------------------------------------------------------------
