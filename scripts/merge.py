@@ -134,13 +134,19 @@ def do_merging(run="", indir=".", outdir="."):
         process_json(gene_count_files, indir, outdir, run, "genes")
 
 
-def main(args):
-    parser = argparse.ArgumentParser(
-        prog="arcasHLA merge",
-        usage="%(prog)s [options]",
-        add_help=False,
-        formatter_class=RawTextHelpFormatter,
-    )
+def build_arg_parser(super_parser=None, subcommand_name="merge"):
+    parser_args = {
+        "prog": "arcasHLA merge",
+        "usage": "%(prog)s [options]",
+        "add_help": False,
+        "formatter_class": RawTextHelpFormatter,
+    }
+
+    if not super_parser:
+        parser = argparse.ArgumentParser(**parser_args)
+
+    else:
+        parser = super_parser.add_parser(name=subcommand_name, **parser_args)
 
     parser.add_argument(
         "-h",
@@ -167,9 +173,20 @@ def main(args):
 
     parser.add_argument("-v", "--verbose", action="count", default=False)
 
+    parser.set_defaults(
+        run_function=lambda parsed_args: do_merging(
+            parsed_args.run, parsed_args.indir, parsed_args.outdir
+        )
+    )
+
+    return parser
+
+
+def main(args):
+    parser = build_arg_parser()
     parsed_args = parser.parse_args(args)
 
-    do_merging(parsed_args.run, parsed_args.indir, parsed_args.outdir)
+    parsed_args.run_function(parsed_args)
 
 
 if __name__ == "__main__":
