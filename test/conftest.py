@@ -8,6 +8,8 @@ import subprocess
 
 from pathlib import Path
 
+from extract import do_extraction
+
 
 @pytest.fixture(scope="session")
 def repo_root() -> str:
@@ -28,13 +30,12 @@ def set_reference_version(repo_root):
 
 
 @pytest.fixture(scope="session")
-def extract_reads(repo_root, tmp_path_factory):
+def extract_reads(tmp_path_factory):
     """
     Extract reads before typing tests
     """
     output_dir = str(tmp_path_factory.mktemp("extracted_reads"))
-    extract_cmd = f"{repo_root}/arcasHLA extract test/test.bam -o {output_dir} -t 8 -v"
-    subprocess.run(extract_cmd.split(), check=True)
+    do_extraction("test/test.bam", outdir=output_dir)
 
     # Provide the individual extracted reads files.
     return [
