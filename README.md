@@ -8,25 +8,20 @@ conda install arcas-hla -c bioconda -c conda-forge
 
 **Important**: Please include channels `bioconda` and `conda-forge` as above.
 
-`arcasHLA` can also be installed through the
-[environment.yml](./environment.yml) file in this repo:
-
-```
-conda env create -f environment.yml
-conda activate arcas-hla
-```
-
-For development, also include the `dev_environment.yml`:
+`arcasHLA` can also be installed by cloning this repo and using
+[pixi](https://pixi.sh):
 
 ```sh
-conda env create -f environment.yml -f dev_environment.yml -n arcas-hla-dev
+pixi install
+pixi run test
 ```
 
-Basic development tasks are recorded in the [Makefile](./Makefile):
+Development tasks (formatting, linting) live in a separate `dev` environment
+defined in [pixi.toml](./pixi.toml):
 
 ```sh
-conda run -n arcas-hla-dev make format
-conda run -n arcas-hla-dev make test
+pixi run format
+pixi run lint
 ```
 
 ### Test
