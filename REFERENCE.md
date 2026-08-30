@@ -36,6 +36,30 @@ customization tables, static runtime configuration, and `manifest.json`.
 `hla_transcripts.json` and the GRCh38 FASTAs are static arcasHLA assets rather
 than IMGT-derived data; their provenance is recorded in the manifest.
 
+## Minified references for testing
+
+`reference build` can produce a much smaller reference for quick testing:
+
+```sh
+arcasHLA reference build \
+  --imgt /opt/imgt-hla/3.55.0 \
+  --outdir /opt/arcashla-ref/minified \
+  --genes A,E --max-alleles-per-gene 3 \
+  --skip-partial --skip-customize
+```
+
+`--genes` restricts the build to the listed genes, `--max-alleles-per-gene` caps
+how many alleles of each are kept, and `--skip-partial` omits the partial allele
+index, which is the largest artefact of a full build. Combining all three with
+`--skip-customize` builds in seconds instead of minutes and produces a reference
+of a few megabytes.
+
+Alleles are selected in sorted order, so the same source and options always
+produce the same reference. A minified reference does not cover enough of
+IMGT/HLA to give correct genotypes; it gives reproducible ones. The selection is
+recorded under `selection` in `manifest.json`, and `genotype --partial` refuses
+to run against a reference built with `--skip-partial`.
+
 ## Select a reference
 
 Set the environment variable for all commands:
