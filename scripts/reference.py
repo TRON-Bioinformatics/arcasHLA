@@ -27,17 +27,23 @@ import sys
 import re
 import json
 
-# import pickle
 import argparse
+import hashlib
+import io
 import logging as log
 import numpy as np
 
-from argparse import RawTextHelpFormatter
-from os.path import isfile, isdir
+import os
+import shutil
+import subprocess
+import tarfile
 
-from textwrap import wrap
+from argparse import RawTextHelpFormatter
 from scipy import stats
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 
 from Bio.Seq import Seq
 from Bio import SeqIO
@@ -45,59 +51,143 @@ from Bio.SeqRecord import SeqRecord
 
 import config
 from arcas_utilities import *
+from ref_paths import CORE_REFERENCE_FILES, REFERENCE_SCHEMA
+
+# -------------------------------------------------------------------------------
+#   Paths and filenames
+# -------------------------------------------------------------------------------
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+REQUIRED_IMGT_FILES = ("hla.dat", "wmda/hla_nom_g.txt", "wmda/hla_nom_p.txt")
+CUSTOM_FASTAS = (
+    "GRCh38.all.noHLA.fasta",
+    "GRCh38.chr6.noHLA.fasta",
+    "GRCh38.chr6.HLA.fasta",
+)
+
+
+@dataclass(frozen=True)
+class ReferencePaths:
+    imgt_dir: Path
+    out_dir: Path
+    hla_dat: Path
+    hla_nom_g: Path
+    hla_nom_p: Path
+    hla_convert_json: Path
+    hla_fa: Path
+    partial_fa: Path
+    hla_json: Path
+    partial_json: Path
+    hla_idx: Path
+    partial_idx: Path
+    parameters_json: Path
+    manifest_json: Path
+
+
+def paths_for(imgt_dir, out_dir):
+    """Return all source and output paths for a reference build."""
+    imgt_dir = Path(imgt_dir).expanduser().resolve()
+    out_dir = Path(out_dir).expanduser().resolve()
+    return ReferencePaths(
+        imgt_dir=imgt_dir,
+        out_dir=out_dir,
+        hla_dat=imgt_dir / "hla.dat",
+        hla_nom_g=imgt_dir / "wmda" / "hla_nom_g.txt",
+        hla_nom_p=imgt_dir / "wmda" / "hla_nom_p.txt",
+        hla_convert_json=out_dir / "ref" / "hla.convert.json",
+        hla_fa=out_dir / "ref" / "hla.fasta",
+        partial_fa=out_dir / "ref" / "hla_partial.fasta",
+        hla_json=out_dir / "ref" / "hla.p.json",
+        partial_json=out_dir / "ref" / "hla_partial.p.json",
+        hla_idx=out_dir / "ref" / "hla.idx",
+        partial_idx=out_dir / "ref" / "hla_partial.idx",
+        parameters_json=out_dir / "info" / "parameters.json",
+        manifest_json=out_dir / "manifest.json",
+    )
 
 
 # -------------------------------------------------------------------------------
 #   Fetch and process IMGTHLA database
 # -------------------------------------------------------------------------------
+
+
 def get_mode(lengths):
     return stats.mode(lengths)[0]
 
 
-def ensure_ref_exists():
-    """Check if IMGTHLA and constructed HLA references exist."""
-
-    if not isfile(config.hla_dat):
-        force_clone_imgt_hla_db()
-        create_conversion_tables(False)
-        create_fasta_ref_from_hla_allele_data()
-
-
-def force_clone_imgt_hla_db():
-    """Clones IMGTHLA github to database."""
-
-    if isdir(config.imgthla_dir):
-        run_command(["rm", "-rf", config.imgthla_dir])
-
-    command = ["git", "clone", config.imgthla_git, config.imgthla_dir]
-    run_command(command, "[reference] Cloning IMGT/HLA database:")
-
-
-def checkout_imgt_hla_db(commithash, verbose=True):
-    """Checks out a specific IMGTHLA github version given a commithash."""
-
-    if not isfile(config.hla_dat):
-        force_clone_imgt_hla_db()
-
-    command = ["git", "-C", config.imgthla_dir, "checkout", "-f", commithash]
-    if verbose:
-        run_command(command, "[reference] Checking out IMGT/HLA:")
-    else:
-        run_command(command)
+def validate_imgt_source(imgt_dir):
+    """Validate a read-only IMGT/HLA source tree."""
+    source = Path(imgt_dir).expanduser().resolve()
+    if not source.is_dir():
+        sys.exit(f"[reference] Error: IMGT/HLA source is not a directory: {source}")
+    missing = [
+        relative
+        for relative in REQUIRED_IMGT_FILES
+        if not (source / relative).is_file()
+    ]
+    if missing:
+        sys.exit(
+            "[reference] Error: IMGT/HLA source is missing required files: "
+            + ", ".join(missing)
+        )
+    return source
 
 
-def hla_dat_commit(print_version=False):
-    """Returns commithash of downloaded IMGTHLA database."""
+def _read_git_commit(imgt_dir):
+    if not (Path(imgt_dir) / ".git").exists():
+        return None
+    result = subprocess.run(
+        ["git", "-C", str(imgt_dir), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
 
-    results = run_command(["git", "-C", config.imgthla_dir, "rev-parse HEAD"])
-    commit = results.stdout.decode()
-    if print_version:
-        log.info(commit)
 
-    return commit[:-1]
+def _detect_release_from_files(imgt_dir):
+    candidates = (
+        Path(imgt_dir) / "release_version.txt",
+        Path(imgt_dir) / "Allelelist.txt",
+        Path(imgt_dir) / "wmda" / "hla_nom_g.txt",
+    )
+    pattern = re.compile(r"(?<!\d)(\d+\.\d+\.\d+)(?!\d)")
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        with candidate.open("r", encoding="UTF-8", errors="replace") as file:
+            for _, line in zip(range(100), file):
+                match = pattern.search(line)
+                if match:
+                    return match.group(1)
+    return None
 
 
-def parse_hla_allele_data():
+def detect_imgt_version(imgt_dir, version_override=None):
+    """Detect the IMGT release label and optional git commit read-only."""
+    commit = _read_git_commit(imgt_dir)
+    detected = None
+    if commit:
+        detected = next(
+            (
+                version
+                for version, known_commit in config.versions.items()
+                if known_commit == commit
+            ),
+            None,
+        )
+    if not detected:
+        detected = _detect_release_from_files(imgt_dir)
+    version = version_override or detected
+    if not version:
+        sys.exit(
+            "[reference] Error: unable to detect the IMGT/HLA release; "
+            "pass `--version X.Y.Z`."
+        )
+    return version, commit
+
+
+def process_hla_dat(hla_dat_path):
     """Processes IMGTHLA database, returning HLA sequences, exon locations,
     lists of complete and partial alleles and possible exon combinations.
     """
@@ -114,12 +204,12 @@ def parse_hla_allele_data():
     complete_2fields = set()
     partial_alleles = set()
 
-    with open(config.hla_dat, "r", encoding="UTF-8") as file:
+    with open(hla_dat_path, "r", encoding="UTF-8") as file:
         lines = file.read().splitlines()
 
     # Check if hla.dat failed to download
     if len(lines) < 10:
-        sys.exit("[reference] Error: dat/IMGTHLA/hla.dat empty or corrupted.")
+        sys.exit(f"[reference] Error: {hla_dat_path} empty or corrupted.")
 
     for line in lines:
         # Denotes end of sequence, add allele to database
@@ -142,8 +232,8 @@ def parse_hla_allele_data():
             partial = True
 
         # Allele name and gene
-        elif line.startswith("FT") and re.search('allele\="HLA-', line):
-            allele = re.split("HLA-", re.sub('["\n]', "", line))[1]
+        elif line.startswith("FT") and re.search(r'allele\="HLA-', line):
+            allele = re.split("HLA-", re.sub(r'["\n]', "", line))[1]
             gene = get_gene(allele)
 
             exon = sequence = False
@@ -151,7 +241,7 @@ def parse_hla_allele_data():
 
         # Exon coordinates
         elif line.startswith("FT") and re.search("exon", line):
-            info = re.split("\s+", line)
+            info = re.split(r"\s+", line)
             start = int(info[2].split("..")[0]) - 1
             stop = int(info[2].split("..")[1])
             exon_coord = [start, stop]
@@ -164,8 +254,8 @@ def parse_hla_allele_data():
             exon = False
 
         # UTRs
-        elif line.startswith("FT") and (re.search("\sUTR\s", line)):
-            info = re.split("\s+", line)
+        elif line.startswith("FT") and (re.search(r"\sUTR\s", line)):
+            info = re.split(r"\s+", line)
             start = int(info[2].split("..")[0]) - 1
             stop = int(info[2].split("..")[1])
             utr_coord = [start, stop]
@@ -217,7 +307,7 @@ def parse_hla_allele_data():
     )
 
 
-def parse_hla_nomenclature(hla_nom):
+def process_hla_nom(hla_nom):
     """Processes nomenclature files for arcasHLA convert."""
     allele_to_group = defaultdict(dict)
 
@@ -262,18 +352,56 @@ def parse_hla_nomenclature(hla_nom):
 # -------------------------------------------------------------------------------
 
 
-def write_reference(sequences, info, fasta, idx, database, type):
+def build_allele_groups(hla_nom_g, allele_keys):
+    """Build 2-field allele equivalence sets used by customize --grouping."""
+    groups = {allele: {allele} for allele in allele_keys}
+    with Path(hla_nom_g).open("r", encoding="UTF-8") as file:
+        for line in file:
+            if line.startswith("#"):
+                continue
+            gene, alleles, group = line.rstrip("\n").split(";")
+            if not group:
+                continue
+            members = {
+                process_allele(gene + allele, 2) for allele in alleles.split("/")
+            }
+            for allele in members:
+                groups.setdefault(allele, {allele}).update(members)
+    return {key: sorted(value) for key, value in sorted(groups.items())}
+
+
+def _run_kallisto_index(fasta, index, reference_type, jobs=1):
+    command = ["kallisto", "index", "-i", str(index)]
+    if jobs and int(jobs) > 1:
+        command.extend(["-t", str(jobs)])
+    command.append(str(fasta))
+    log.info(
+        "[reference] indexing %s reference with Kallisto:\n\n\t%s\n",
+        reference_type,
+        " ".join(command),
+    )
+    return subprocess.run(command, capture_output=True, text=True, check=False)
+
+
+def write_reference(
+    sequences,
+    info,
+    fasta,
+    idx,
+    database,
+    reference_type,
+    version_token,
+    jobs=1,
+):
     """Writes and idxes HLA references."""
     with open(fasta, "w") as file:
         SeqIO.write(sequences, file, "fasta")
-
-    commithash = hla_dat_commit()
 
     with open(database, "w") as file:
         if len(info) == 4:
             json.dump(
                 [
-                    commithash,
+                    version_token,
                     [
                         list(info[0]),
                         json.dumps(info[1], cls=NumpyEncoder),
@@ -286,7 +414,7 @@ def write_reference(sequences, info, fasta, idx, database, type):
         if len(info) == 6:
             json.dump(
                 [
-                    commithash,
+                    version_token,
                     [
                         list(info[0]),
                         json.dumps(info[1], cls=NumpyEncoder),
@@ -299,10 +427,12 @@ def write_reference(sequences, info, fasta, idx, database, type):
                 file,
             )
 
-    run_command(
-        ["kallisto", "index", "-i", idx, fasta],
-        "[reference] indexing " + type + " reference with Kallisto:",
-    )
+    result = _run_kallisto_index(fasta, idx, reference_type, jobs)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"kallisto failed to index {reference_type} reference: "
+            f"{result.stderr.strip()}"
+        )
 
 
 # -------------------------------------------------------------------------------
@@ -322,11 +452,10 @@ def get_exon_combinations():
     return exon_combinations
 
 
-def create_fasta_ref_from_hla_allele_data():
+def build_fasta(paths, version_token, jobs=1, keep_going=False):
     """Constructs HLA reference from processed sequences and exon locations."""
 
-    log.info("[reference] IMGT/HLA database version:\n")
-    hla_dat_commit(True)
+    log.info("[reference] IMGT/HLA database version:\n\n%s", version_token)
 
     log.info("[reference] Processing IMGT/HLA database")
 
@@ -346,6 +475,7 @@ def create_fasta_ref_from_hla_allele_data():
                 seq = seq[: exon_length - (stop - start) + 1]
 
         cDNA[seq].add(allele)
+        cdna_by_allele[process_allele(allele, 2)].add(seq)
         gene_length[gene].append(len(seq))
 
         if allele in utrs:
@@ -442,12 +572,13 @@ def create_fasta_ref_from_hla_allele_data():
         utrs,
         exons,
         final_exon_length,
-    ) = parse_hla_allele_data()
+    ) = process_hla_dat(paths.hla_dat)
 
     exon_combinations = get_exon_combinations()
 
     gene_length = defaultdict(list)
     cDNA = defaultdict(set)
+    cdna_by_allele = defaultdict(set)
     combo = {str(i): defaultdict(set) for i in exon_combinations}
     other = set()
 
@@ -463,48 +594,61 @@ def create_fasta_ref_from_hla_allele_data():
     other = list(other)
     gene_length = {g: get_mode(lengths) for g, lengths in gene_length.items()}
 
+    errors = []
+
+    def write_or_collect(*args):
+        try:
+            write_reference(*args)
+        except RuntimeError as error:
+            if not keep_going:
+                raise
+            errors.append(str(error))
+
     log.info("[reference] Building HLA database")
     seq_out, allele_idx, lengths = complete_records(cDNA, other)
-    write_reference(
+    write_or_collect(
         seq_out,
         [gene_set, allele_idx, lengths, gene_length],
-        config.hla_fa,
-        config.hla_idx,
-        config.hla_json,
+        paths.hla_fa,
+        paths.hla_idx,
+        paths.hla_json,
         "complete",
+        version_token,
+        jobs,
     )
 
     log.info("[reference] Building partial HLA database")
     seq_out, allele_idx, lengths, exon_idx = partial_records(combo, other)
     partial_exons = {allele: exons[allele] for allele in partial_alleles}
-    write_reference(
+    write_or_collect(
         seq_out,
         [gene_set, allele_idx, exon_idx, lengths, partial_exons, partial_alleles],
-        config.partial_fa,
-        config.partial_idx,
-        config.partial_json,
+        paths.partial_fa,
+        paths.partial_idx,
+        paths.partial_json,
         "partial",
+        version_token,
+        jobs,
     )
 
+    cdna = {
+        allele: sorted(values, key=lambda sequence: (len(sequence), sequence))
+        for allele, values in sorted(cdna_by_allele.items())
+    }
+    cdna_single = {allele: values[0] for allele, values in cdna.items()}
+    return cdna, cdna_single, build_allele_groups(paths.hla_nom_g, cdna), errors
 
-def create_conversion_tables(reset=False):
+
+def build_convert(paths):
     """Creates conversion tables for arcasHLA convert."""
 
     log.info("[reference] Building nomenclature conversion tables.")
 
-    commit = hla_dat_commit()
+    p_group = process_hla_nom(paths.hla_nom_p)
+    g_group = process_hla_nom(paths.hla_nom_g)
 
-    if reset:
-        checkout_imgt_hla_db("origin", False)
-
-    p_group = parse_hla_nomenclature(config.hla_nom_p)
-    g_group = parse_hla_nomenclature(config.hla_nom_g)
-
-    with open(config.hla_convert_json, "w") as file:
+    with open(paths.hla_convert_json, "w") as file:
         json.dump([p_group, g_group], file)
-
-    if reset:
-        checkout_imgt_hla_db(commit, False)
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -514,48 +658,241 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
-def build_reference(
-    update=False, rebuild=False, version=None, commit=None, verbose=False
-):
-    if verbose:
-        log.basicConfig(level=log.DEBUG, format="%(message)s")
+def _sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _copy_or_link(source, destination):
+    source = Path(source)
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() == destination.resolve():
+        return
+    if destination.exists():
+        destination.unlink()
+    try:
+        os.link(source, destination)
+    except OSError:
+        shutil.copy2(source, destination)
+
+
+def _stage_custom_fastas(static_ref_dir, output_ref_dir):
+    archive_path = static_ref_dir / "customization_reference_fastas.tar.gz"
+    missing = []
+    for name in CUSTOM_FASTAS:
+        source = static_ref_dir / name
+        destination = output_ref_dir / name
+        if source.is_file():
+            _copy_or_link(source, destination)
+        else:
+            missing.append(name)
+    if not missing:
+        return
+    if not archive_path.is_file():
+        raise RuntimeError(
+            "missing customization FASTAs and archive: " + ", ".join(missing)
+        )
+    with tarfile.open(archive_path, "r:*") as archive:
+        names = set(archive.getnames())
+        absent = [name for name in missing if name not in names]
+        if absent:
+            raise RuntimeError("customization archive is missing: " + ", ".join(absent))
+        for name in missing:
+            source = archive.extractfile(archive.getmember(name))
+            if source is None:
+                raise RuntimeError(f"unable to read {name} from customization archive")
+            destination = output_ref_dir / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("wb") as file:
+                shutil.copyfileobj(source, file)
+
+
+def _build_hla_transcripts(static_ref_dir):
+    fasta_path = static_ref_dir / "GRCh38.chr6.HLA.fasta"
+    if fasta_path.is_file():
+        records = SeqIO.parse(fasta_path, "fasta")
     else:
-        handlers = [log.StreamHandler()]
-        log.basicConfig(format="%(message)s")
+        archive_path = static_ref_dir / "customization_reference_fastas.tar.gz"
+        if not archive_path.is_file():
+            return None
+        archive = tarfile.open(archive_path, "r:*")
+        source = archive.extractfile("GRCh38.chr6.HLA.fasta")
+        if source is None:
+            archive.close()
+            return None
+        records = SeqIO.parse(io.TextIOWrapper(source, encoding="UTF-8"), "fasta")
 
-    log.info("")
-    hline()
+    transcripts = defaultdict(list)
+    try:
+        for record in records:
+            match = re.search(r"gene_symbol:HLA-(\S+)", record.description)
+            if match:
+                transcripts[match.group(1)].append(record.id)
+    finally:
+        if not fasta_path.is_file():
+            archive.close()
+    return dict(transcripts)
 
-    check_path(config.ref_dir)
 
-    if update:
-        log.info("[reference] Updating HLA reference")
-        checkout_imgt_hla_db("origin")
-        create_conversion_tables(False)
-        create_fasta_ref_from_hla_allele_data()
+def _kallisto_version():
+    for command in (["kallisto", "version"], ["kallisto", "--version"]):
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            output = (result.stdout or result.stderr).strip()
+            if output:
+                return output
+    return None
 
-    elif rebuild:
-        create_conversion_tables()
-        create_fasta_ref_from_hla_allele_data()
 
-    elif version:
-        if version not in config.versions:
-            sys.exit("[reference] Error: invalid version.")
-        checkout_imgt_hla_db(config.versions[version])
-        create_fasta_ref_from_hla_allele_data()
-        create_conversion_tables()
+class ReferenceBuilder:
+    """Builds a self-contained, versioned arcasHLA reference directory from a
+    read-only IMGT/HLA source. Static, version-independent arcasHLA assets
+    (parameters, priors, decoys, and the customization FASTAs) are staged
+    from `static_data_dir` (the repository's `dat/` by default).
+    """
 
-    elif commit:
-        checkout_imgt_hla_db(commit)
-        create_fasta_ref_from_hla_allele_data()
-        create_conversion_tables()
+    def __init__(
+        self,
+        imgt_dir,
+        out_dir,
+        version=None,
+        force=False,
+        jobs=1,
+        keep_going=False,
+        skip_customize=False,
+        static_data_dir=ROOT_DIR / "dat",
+    ):
+        self.paths = paths_for(imgt_dir, out_dir)
+        self.version_override = version
+        self.force = force
+        self.jobs = jobs
+        self.keep_going = keep_going
+        self.skip_customize = skip_customize
+        self.static_data_dir = Path(static_data_dir)
 
-    else:
-        ensure_ref_exists()
-        hla_dat_commit(True)
+    def build(self):
+        validate_imgt_source(self.paths.imgt_dir)
+        if self.paths.manifest_json.exists() and not self.force:
+            sys.exit(
+                f"[reference] Error: {self.paths.out_dir} already contains "
+                "manifest.json; use --force or choose another --outdir."
+            )
 
-    hline()
-    log.info("")
+        self.paths.out_dir.mkdir(parents=True, exist_ok=True)
+        (self.paths.out_dir / "ref").mkdir(exist_ok=True)
+        (self.paths.out_dir / "info").mkdir(exist_ok=True)
+        if self.paths.manifest_json.exists():
+            self.paths.manifest_json.unlink()
+
+        version, commit = detect_imgt_version(
+            self.paths.imgt_dir, self.version_override
+        )
+        version_token = commit or version
+
+        for name in ("parameters.json", "hla_freq.tsv", "decoys_alts.json"):
+            source = self.static_data_dir / "info" / name
+            if not source.is_file():
+                raise RuntimeError(f"missing static arcasHLA asset: {source}")
+            _copy_or_link(source, self.paths.out_dir / "info" / name)
+
+        cdna, cdna_single, allele_groups, errors = build_fasta(
+            self.paths,
+            version_token=version_token,
+            jobs=self.jobs,
+            keep_going=self.keep_going,
+        )
+        build_convert(self.paths)
+
+        tables = {
+            "cDNA.json": cdna,
+            "cDNA.single.json": cdna_single,
+            "allele_groups.json": allele_groups,
+        }
+        for name, table in tables.items():
+            with (self.paths.out_dir / "ref" / name).open(
+                "w", encoding="UTF-8"
+            ) as file:
+                json.dump(table, file, sort_keys=True)
+
+        hla_transcripts = _build_hla_transcripts(self.static_data_dir / "ref")
+        if hla_transcripts is None:
+            transcript_source = self.static_data_dir / "ref" / "hla_transcripts.json"
+            if not transcript_source.is_file():
+                raise RuntimeError(
+                    f"missing static arcasHLA asset: {transcript_source}"
+                )
+            with transcript_source.open("r", encoding="UTF-8") as file:
+                hla_transcripts = json.load(file)
+        with (self.paths.out_dir / "ref" / "hla_transcripts.json").open(
+            "w", encoding="UTF-8"
+        ) as file:
+            json.dump(hla_transcripts, file, sort_keys=True)
+
+        if self.skip_customize:
+            for name in CUSTOM_FASTAS:
+                destination = self.paths.out_dir / "ref" / name
+                if destination.exists():
+                    destination.unlink()
+        else:
+            _stage_custom_fastas(
+                self.static_data_dir / "ref", self.paths.out_dir / "ref"
+            )
+
+        if errors:
+            raise RuntimeError("\n".join(errors))
+
+        missing = [
+            relative
+            for relative in CORE_REFERENCE_FILES
+            if not (self.paths.out_dir / relative).is_file()
+        ]
+        if missing:
+            raise RuntimeError(
+                "reference build did not produce required files: " + ", ".join(missing)
+            )
+
+        produced_files = set(CORE_REFERENCE_FILES)
+        produced_files.update(
+            {
+                "ref/allele_groups.json",
+                "ref/cDNA.json",
+                "ref/cDNA.single.json",
+                "ref/hla_transcripts.json",
+            }
+        )
+        if not self.skip_customize:
+            produced_files.update(f"ref/{name}" for name in CUSTOM_FASTAS)
+        files = {
+            relative: {"sha256": _sha256(self.paths.out_dir / relative)}
+            for relative in sorted(produced_files)
+        }
+
+        manifest = {
+            "arcashla_ref_schema": REFERENCE_SCHEMA,
+            "built_at": datetime.now(timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "imgt_source": str(self.paths.imgt_dir),
+            "imgt_version": version,
+            "imgt_commit": commit,
+            "kallisto_version": _kallisto_version(),
+            "customization_assets": (
+                "omitted"
+                if self.skip_customize
+                else "staged from arcasHLA static assets"
+            ),
+            "files": files,
+        }
+        with self.paths.manifest_json.open("w", encoding="UTF-8") as file:
+            json.dump(manifest, file, indent=2, sort_keys=True)
+            file.write("\n")
+        log.info("[reference] Built reference at %s", self.paths.out_dir)
+        return manifest
 
 
 # -------------------------------------------------------------------------------
@@ -563,10 +900,41 @@ def build_reference(
 # -------------------------------------------------------------------------------
 
 
+def do_reference_build(
+    imgt,
+    outdir,
+    version=None,
+    force=False,
+    jobs=1,
+    keep_going=False,
+    skip_customize=False,
+    verbose=False,
+):
+    if jobs < 1:
+        sys.exit("[reference] Error: --jobs must be at least 1.")
+    if verbose:
+        log.basicConfig(level=log.DEBUG, format="%(message)s")
+    else:
+        log.basicConfig(format="%(message)s")
+
+    try:
+        return ReferenceBuilder(
+            imgt,
+            outdir,
+            version=version,
+            force=force,
+            jobs=jobs,
+            keep_going=keep_going,
+            skip_customize=skip_customize,
+        ).build()
+    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        sys.exit(f"[reference] Error: {error}")
+
+
 def build_arg_parser(super_parser=None, subcommand_name="reference"):
     parser_args = {
         "prog": "arcasHLA reference",
-        "usage": "%(prog)s [options]",
+        "usage": "%(prog)s build [options]",
         "add_help": False,
         "formatter_class": RawTextHelpFormatter,
     }
@@ -585,38 +953,90 @@ def build_arg_parser(super_parser=None, subcommand_name="reference"):
         default=argparse.SUPPRESS,
     )
 
-    parser.add_argument(
-        "--update", action="count", help="update to latest IMGT/HLA version\n\n"
+    ref_subparsers = parser.add_subparsers(
+        dest="ref_command",
+        required=True,
+        metavar="build",
+        help="reference subcommand\n\n",
     )
 
-    parser.add_argument("--rebuild", help="rebuild HLA database\n\n", action="count")
+    build_parser = ref_subparsers.add_parser(
+        "build",
+        prog="arcasHLA reference build",
+        usage="%(prog)s --imgt path --outdir path [options]",
+        add_help=False,
+        formatter_class=RawTextHelpFormatter,
+    )
 
-    parser.add_argument(
+    build_parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        help="show this help message and exit\n\n",
+        default=argparse.SUPPRESS,
+    )
+
+    build_parser.add_argument(
+        "--imgt",
+        required=True,
+        help="read-only IMGT/HLA source directory\n\n",
+        metavar="",
+    )
+
+    build_parser.add_argument(
+        "--outdir",
+        required=True,
+        help="reference output directory\n\n",
+        metavar="",
+    )
+
+    build_parser.add_argument(
         "--version",
-        type=str,
-        help="checkout IMGT/HLA version using version\n"
-        + "\n".join(wrap("options: " + ", ".join(sorted(config.versions.keys())), 60))
-        + "\n\n",
-        default=False,
+        help="override the detected release label\n\n",
+        default=None,
         metavar="",
     )
 
-    parser.add_argument(
-        "--commit",
-        type=str,
-        help="checkout IMGT/HLA version using commithash\n\n",
+    build_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite a previously built reference\n\n",
         default=False,
+    )
+
+    build_parser.add_argument(
+        "--jobs",
+        type=int,
+        help="Kallisto indexing jobs\n  default: 1\n\n",
+        default=1,
         metavar="",
     )
 
-    parser.add_argument("-v", "--verbose", action="count", default=False)
+    build_parser.add_argument(
+        "--keep-going",
+        action="store_true",
+        help="attempt both indexes before reporting failures\n\n",
+        default=False,
+    )
 
-    parser.set_defaults(
-        run_function=lambda parsed_args: build_reference(
-            parsed_args.update,
-            parsed_args.rebuild,
+    build_parser.add_argument(
+        "--skip-customize",
+        action="store_true",
+        help="omit large GRCh38 assets used by customize\n\n",
+        default=False,
+    )
+
+    build_parser.add_argument("-v", "--verbose", action="count", default=0)
+
+    build_parser.set_defaults(
+        run_function=lambda parsed_args: do_reference_build(
+            parsed_args.imgt,
+            parsed_args.outdir,
             parsed_args.version,
-            parsed_args.commit,
+            parsed_args.force,
+            parsed_args.jobs,
+            parsed_args.keep_going,
+            parsed_args.skip_customize,
             parsed_args.verbose,
         )
     )

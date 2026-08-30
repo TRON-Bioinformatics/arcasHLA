@@ -66,7 +66,7 @@ def build_arg_parser():
             "quant: allele specific HLA quantification, "
             "merge: processes results into a tab-separated table, "
             "convert: converts HLA nomenclature/resolution, "
-            "reference: check or update HLA reference."
+            "reference: build an external, versioned HLA reference."
         ),
     )
     build_convert_parser(subparsers)
