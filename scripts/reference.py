@@ -187,9 +187,34 @@ def detect_imgt_version(imgt_dir, version_override=None):
     return version, commit
 
 
-def process_hla_dat(hla_dat_path):
+def select_alleles(alleles, genes=None, max_alleles_per_gene=None):
+    """Deterministically restrict alleles to a subset of genes and a maximum
+    number of alleles per gene. Alleles are chosen in sorted order so that
+    the same source always yields the same selection.
+    """
+    if not genes and not max_alleles_per_gene:
+        return set(alleles)
+
+    wanted = {gene.upper() for gene in genes} if genes else None
+    selected = set()
+    counts = defaultdict(int)
+    for allele in sorted(alleles):
+        gene = get_gene(allele)
+        if wanted is not None and gene not in wanted:
+            continue
+        if max_alleles_per_gene and counts[gene] >= max_alleles_per_gene:
+            continue
+        counts[gene] += 1
+        selected.add(allele)
+    return selected
+
+
+def process_hla_dat(hla_dat_path, genes=None, max_alleles_per_gene=None):
     """Processes IMGTHLA database, returning HLA sequences, exon locations,
     lists of complete and partial alleles and possible exon combinations.
+
+    `genes` and `max_alleles_per_gene` build a reduced reference covering
+    only part of the database.
     """
 
     sequences = dict()
@@ -279,6 +304,30 @@ def process_hla_dat(hla_dat_path):
         if process_allele(allele, 2) not in complete_2fields
     }
 
+    complete_alleles = select_alleles(complete_alleles, genes, max_alleles_per_gene)
+    partial_alleles = select_alleles(partial_alleles, genes, max_alleles_per_gene)
+
+    if genes or max_alleles_per_gene:
+        if not complete_alleles and not partial_alleles:
+            sys.exit(
+                "[reference] Error: the requested gene selection matched no "
+                "alleles; available genes are " + ", ".join(sorted(gene_set)) + "."
+            )
+        selected = complete_alleles | partial_alleles
+        sequences = {
+            allele: sequence
+            for allele, sequence in sequences.items()
+            if allele in selected
+        }
+        exons = {
+            allele: coords for allele, coords in exons.items() if allele in selected
+        }
+        utrs = {allele: coords for allele, coords in utrs.items() if allele in selected}
+        gene_set = {get_gene(allele) for allele in selected}
+        gene_exons = {
+            gene: numbers for gene, numbers in gene_exons.items() if gene in gene_set
+        }
+
     # get most common final exon length to truncate stop-loss alleles
     final_exon_length = defaultdict(list)
     for allele in complete_alleles:
@@ -352,8 +401,9 @@ def process_hla_nom(hla_nom):
 # -------------------------------------------------------------------------------
 
 
-def build_allele_groups(hla_nom_g, allele_keys):
+def build_allele_groups(hla_nom_g, allele_keys, genes=None):
     """Build 2-field allele equivalence sets used by customize --grouping."""
+    wanted = {gene.upper() for gene in genes} if genes else None
     groups = {allele: {allele} for allele in allele_keys}
     with Path(hla_nom_g).open("r", encoding="UTF-8") as file:
         for line in file:
@@ -361,6 +411,8 @@ def build_allele_groups(hla_nom_g, allele_keys):
                 continue
             gene, alleles, group = line.rstrip("\n").split(";")
             if not group:
+                continue
+            if wanted is not None and gene.rstrip("*").upper() not in wanted:
                 continue
             members = {
                 process_allele(gene + allele, 2) for allele in alleles.split("/")
@@ -452,7 +504,14 @@ def get_exon_combinations():
     return exon_combinations
 
 
-def build_fasta(paths, version_token, jobs=1, keep_going=False):
+def build_fasta(
+    paths,
+    version_token,
+    jobs=1,
+    keep_going=False,
+    genes=None,
+    max_alleles_per_gene=None,
+):
     """Constructs HLA reference from processed sequences and exon locations."""
 
     log.info("[reference] IMGT/HLA database version:\n\n%s", version_token)
@@ -468,8 +527,8 @@ def build_fasta(paths, version_token, jobs=1, keep_going=False):
         seq = [sequences[allele][start:stop] for start, stop in coords]
         seq = "".join(seq)
 
-        exon, exon_length = final_exon_length[gene]
-        if exon in exons[allele]:
+        exon, exon_length = final_exon_length.get(gene, (None, None))
+        if exon is not None and exon in exons[allele]:
             start, stop = exons[allele][exon]
             if stop - start > exon_length:
                 seq = seq[: exon_length - (stop - start) + 1]
@@ -572,7 +631,7 @@ def build_fasta(paths, version_token, jobs=1, keep_going=False):
         utrs,
         exons,
         final_exon_length,
-    ) = process_hla_dat(paths.hla_dat)
+    ) = process_hla_dat(paths.hla_dat, genes, max_alleles_per_gene)
 
     exon_combinations = get_exon_combinations()
 
@@ -638,16 +697,33 @@ def build_fasta(paths, version_token, jobs=1, keep_going=False):
         for allele, values in sorted(cdna_by_allele.items())
     }
     cdna_single = {allele: values[0] for allele, values in cdna.items()}
-    return cdna, cdna_single, build_allele_groups(paths.hla_nom_g, cdna), errors
+    allele_groups = build_allele_groups(paths.hla_nom_g, cdna, genes)
+    return cdna, cdna_single, allele_groups, errors
 
 
-def build_convert(paths):
+def filter_convert(allele_to_group, genes=None):
+    """Restricts conversion tables to a subset of genes."""
+    if not genes:
+        return allele_to_group
+
+    wanted = {gene.upper() for gene in genes}
+    return {
+        fields: {
+            allele: group
+            for allele, group in mapping.items()
+            if get_gene(allele) in wanted
+        }
+        for fields, mapping in allele_to_group.items()
+    }
+
+
+def build_convert(paths, genes=None):
     """Creates conversion tables for arcasHLA convert."""
 
     log.info("[reference] Building nomenclature conversion tables.")
 
-    p_group = process_hla_nom(paths.hla_nom_p)
-    g_group = process_hla_nom(paths.hla_nom_g)
+    p_group = filter_convert(process_hla_nom(paths.hla_nom_p), genes)
+    g_group = filter_convert(process_hla_nom(paths.hla_nom_g), genes)
 
     with open(paths.hla_convert_json, "w") as file:
         json.dump([p_group, g_group], file)
@@ -766,6 +842,8 @@ class ReferenceBuilder:
         jobs=1,
         keep_going=False,
         skip_customize=False,
+        genes=None,
+        max_alleles_per_gene=None,
         static_data_dir=ROOT_DIR / "dat",
     ):
         self.paths = paths_for(imgt_dir, out_dir)
@@ -774,6 +852,8 @@ class ReferenceBuilder:
         self.jobs = jobs
         self.keep_going = keep_going
         self.skip_customize = skip_customize
+        self.genes = sorted({gene.upper() for gene in genes}) if genes else None
+        self.max_alleles_per_gene = max_alleles_per_gene
         self.static_data_dir = Path(static_data_dir)
 
     def build(self):
@@ -806,8 +886,10 @@ class ReferenceBuilder:
             version_token=version_token,
             jobs=self.jobs,
             keep_going=self.keep_going,
+            genes=self.genes,
+            max_alleles_per_gene=self.max_alleles_per_gene,
         )
-        build_convert(self.paths)
+        build_convert(self.paths, self.genes)
 
         tables = {
             "cDNA.json": cdna,
@@ -883,6 +965,11 @@ class ReferenceBuilder:
             "imgt_version": version,
             "imgt_commit": commit,
             "kallisto_version": _kallisto_version(),
+            "selection": {
+                "genes": self.genes or "all",
+                "max_alleles_per_gene": self.max_alleles_per_gene,
+                "minified": bool(self.genes or self.max_alleles_per_gene),
+            },
             "customization_assets": (
                 "omitted"
                 if self.skip_customize
@@ -910,10 +997,14 @@ def do_reference_build(
     jobs=1,
     keep_going=False,
     skip_customize=False,
+    genes=None,
+    max_alleles_per_gene=None,
     verbose=False,
 ):
     if jobs < 1:
         sys.exit("[reference] Error: --jobs must be at least 1.")
+    if max_alleles_per_gene is not None and max_alleles_per_gene < 1:
+        sys.exit("[reference] Error: --max-alleles-per-gene must be at least 1.")
     if verbose:
         log.basicConfig(level=log.DEBUG, format="%(message)s")
     else:
@@ -928,9 +1019,25 @@ def do_reference_build(
             jobs=jobs,
             keep_going=keep_going,
             skip_customize=skip_customize,
+            genes=genes,
+            max_alleles_per_gene=max_alleles_per_gene,
         ).build()
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         sys.exit(f"[reference] Error: {error}")
+
+
+def arg_check_genes(parser, argument):
+    """Validates a comma separated list of HLA genes."""
+    genes = {gene.strip().upper() for gene in argument.split(",") if gene.strip()}
+    unknown = sorted(genes - config.genes)
+    if unknown:
+        parser.error(
+            "invalid gene(s): "
+            + ", ".join(unknown)
+            + "\noptions: "
+            + ", ".join(sorted(config.genes))
+        )
+    return sorted(genes)
 
 
 def build_arg_parser(super_parser=None, subcommand_name="reference"):
@@ -1028,6 +1135,23 @@ def build_arg_parser(super_parser=None, subcommand_name="reference"):
         default=False,
     )
 
+    build_parser.add_argument(
+        "--genes",
+        help="comma separated list of HLA genes to include\n"
+        + "  default: all genes in the IMGT/HLA source\n\n",
+        default=None,
+        type=lambda argument: arg_check_genes(build_parser, argument),
+        metavar="",
+    )
+
+    build_parser.add_argument(
+        "--max-alleles-per-gene",
+        type=int,
+        help="include at most this many alleles per gene\n\n",
+        default=None,
+        metavar="",
+    )
+
     build_parser.add_argument("-v", "--verbose", action="count", default=0)
 
     build_parser.set_defaults(
@@ -1039,6 +1163,8 @@ def build_arg_parser(super_parser=None, subcommand_name="reference"):
             parsed_args.jobs,
             parsed_args.keep_going,
             parsed_args.skip_customize,
+            parsed_args.genes,
+            parsed_args.max_alleles_per_gene,
             parsed_args.verbose,
         )
     )

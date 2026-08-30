@@ -250,3 +250,88 @@ def test_build_rejects_invalid_imgt_source(tmp_path, missing):
 
     with pytest.raises(SystemExit, match="IMGT/HLA source"):
         reference.validate_imgt_source(source)
+
+
+def test_select_alleles_is_deterministic_and_capped():
+    alleles = {
+        "A*01:01:01",
+        "A*02:01:01",
+        "A*03:01:01",
+        "B*07:02:01",
+        "E*01:01:01",
+    }
+
+    assert reference.select_alleles(alleles, ["a"], 2) == {
+        "A*01:01:01",
+        "A*02:01:01",
+    }
+    assert reference.select_alleles(alleles, None, 1) == {
+        "A*01:01:01",
+        "B*07:02:01",
+        "E*01:01:01",
+    }
+    assert reference.select_alleles(alleles) == alleles
+
+
+def test_gene_selection_reduces_reference(tmp_path, fake_kallisto):
+    source = make_imgt_source(tmp_path / "imgt")
+    static = make_static_data(tmp_path / "static")
+    output = tmp_path / "reference"
+
+    manifest = reference.ReferenceBuilder(
+        source,
+        output,
+        version="9.9.9",
+        skip_customize=True,
+        genes=["a"],
+        max_alleles_per_gene=1,
+        static_data_dir=static,
+    ).build()
+
+    assert manifest["selection"] == {
+        "genes": ["A"],
+        "max_alleles_per_gene": 1,
+        "minified": True,
+    }
+    cdna = json.loads((output / "ref" / "cDNA.json").read_text())
+    assert set(cdna) == {"A*01:01"}
+    groups = json.loads((output / "ref" / "allele_groups.json").read_text())
+    assert all(allele.startswith("A*") for allele in groups)
+    p_group, g_group = json.loads((output / "ref" / "hla.convert.json").read_text())
+    for table in (p_group, g_group):
+        for mapping in table.values():
+            assert all(allele.startswith("A*") for allele in mapping)
+
+
+def test_gene_selection_without_matches_fails(tmp_path, fake_kallisto):
+    source = make_imgt_source(tmp_path / "imgt")
+    static = make_static_data(tmp_path / "static")
+
+    with pytest.raises(SystemExit, match="matched no alleles"):
+        reference.ReferenceBuilder(
+            source,
+            tmp_path / "reference",
+            version="9.9.9",
+            skip_customize=True,
+            genes=["DRB1"],
+            static_data_dir=static,
+        ).build()
+
+
+def test_full_build_records_no_selection(tmp_path, fake_kallisto):
+    source = make_imgt_source(tmp_path / "imgt")
+    static = make_static_data(tmp_path / "static")
+
+    manifest = reference.ReferenceBuilder(
+        source,
+        tmp_path / "reference",
+        version="9.9.9",
+        skip_customize=True,
+        static_data_dir=static,
+    ).build()
+
+    assert manifest["selection"] == {
+        "genes": "all",
+        "max_alleles_per_gene": None,
+        "minified": False,
+    }
