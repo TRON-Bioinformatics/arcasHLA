@@ -70,7 +70,7 @@ def test_partial_allele_typing(repo_root, extract_reads, tmp_path):
     assert output == expected_output
 
 
-def test_reference_customization(repo_root, tmp_path):
+def test_reference_customization(repo_root, tmp_path, set_reference_version):
     genotype_result_path = f"{repo_root}/test/expected_output/test.genotype.json"
     custom_ref_out_path = f"{str(tmp_path)}/custom_reference"
 

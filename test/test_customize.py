@@ -8,7 +8,7 @@ import customize
 
 
 class TestMain:
-    def test_basic(self, repo_root, tmp_path):
+    def test_basic(self, repo_root, tmp_path, set_reference_version):
         genotype_result_path = os.path.join(
             repo_root, "test/expected_output/test.genotype.json"
         )
