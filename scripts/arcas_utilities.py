@@ -30,6 +30,16 @@ import uuid
 from shutil import which
 from subprocess import PIPE, run
 
+from ref_paths import (
+    assert_ref_dir_valid,
+    configure_ref_dir,
+    get_ref_dir,
+    imgt_path,
+    is_valid_ref_dir,
+    load_manifest,
+    ref_path,
+)
+
 # -------------------------------------------------------------------------------
 
 
