@@ -38,7 +38,6 @@ from textwrap import wrap
 from datetime import date
 
 import config
-from reference import ensure_ref_exists
 from arcas_utilities import *
 from align import *
 from genotype import expectation_maximization
@@ -291,9 +290,16 @@ def do_partial_genotyping(
     temp="/tmp/",
     log_file=None,
     verbose=False,
+    reference=None,
 ):
     if len(file) == 0:
         sys.exit("[genotype] Error: FASTQ or partial_alignment.p file required")
+
+    configure_ref_dir(reference)
+    reference_dir = assert_ref_dir_valid()
+    partial_json = ref_path("ref/hla_partial.p.json", reference_dir)
+    partial_idx = ref_path("ref/hla_partial.idx", reference_dir)
+    hla_freq = ref_path("info/hla_freq.tsv", reference_dir)
 
     # Set up directories and log file
     sample = os.path.basename(file[0]).split(".")[0]
@@ -319,18 +325,15 @@ def do_partial_genotyping(
     log.info(f"[log] Sample: %s", sample)
     log.info(f"[log] Input file(s): %s", ", ".join(file))
 
-    prior = pd.read_csv(config.hla_freq, delimiter="\t")
+    prior = pd.read_csv(hla_freq, delimiter="\t")
     prior = prior.set_index("allele").to_dict("index")
-
-    # Checks if HLA reference exists
-    ensure_ref_exists()
 
     # Loads reference information
     # with open(partial_p, 'rb') as file:
     #    reference_info = pickle.load(file)
     #    (commithash, (gene_set, allele_idx, exon_idx,
     #        lengths, partial_exons, partial_alleles)) = reference_info
-    with open(config.partial_json, "r") as json_file:
+    with open(partial_json, "r") as json_file:
         reference_info = json.load(json_file)
         (
             commithash,
@@ -354,7 +357,7 @@ def do_partial_genotyping(
         alignment_info = get_alignment(
             file,
             sample,
-            config.partial_idx,
+            partial_idx,
             reference_info,
             outdir,
             temp,
@@ -536,6 +539,15 @@ def build_arg_parser(super_parser=None, subcommand_name="partial"):
     )
 
     parser.add_argument(
+        "--ref",
+        "--reference",
+        dest="reference",
+        help="built arcasHLA reference directory\n\n",
+        default=None,
+        metavar="",
+    )
+
+    parser.add_argument(
         "-g",
         "--genes",
         help="comma separated list of HLA genes\n"
@@ -665,6 +677,7 @@ def build_arg_parser(super_parser=None, subcommand_name="partial"):
             parsed_args.temp,
             parsed_args.log,
             parsed_args.verbose,
+            parsed_args.reference,
         )
     )
 

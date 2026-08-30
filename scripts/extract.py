@@ -32,7 +32,6 @@ from datetime import date
 from os.path import isfile
 from argparse import RawTextHelpFormatter
 
-import config
 from arcas_utilities import *
 
 # -------------------------------------------------------------------------------
@@ -182,7 +181,11 @@ def do_extraction(
     keep_files=False,
     log_file=None,
     verbose=False,
+    reference=None,
 ):
+    configure_ref_dir(reference)
+    reference_dir = assert_ref_dir_valid()
+
     outdir = check_path(outdir)
     temp = create_temp(temp)
 
@@ -212,7 +215,7 @@ def do_extraction(
     hline()
 
     # Load names of regions outside chr6 with HLA loci
-    with open(config.alt_decoys, "r") as file:
+    with open(ref_path("info/decoys_alts.json", reference_dir), "r") as file:
         alts = json.load(file)
 
     if allreads:
@@ -260,6 +263,15 @@ def build_arg_parser(super_parser=None, subcommand_name="extract"):
         "--log",
         type=str,
         help="log file for run summary\n  " + "default: sample.extract.log\n\n",
+        default=None,
+        metavar="",
+    )
+
+    parser.add_argument(
+        "--ref",
+        "--reference",
+        dest="reference",
+        help="built arcasHLA reference directory\n\n",
         default=None,
         metavar="",
     )
@@ -316,6 +328,7 @@ def build_arg_parser(super_parser=None, subcommand_name="extract"):
             parsed_args.keep_files,
             parsed_args.log,
             parsed_args.verbose,
+            parsed_args.reference,
         )
     )
 

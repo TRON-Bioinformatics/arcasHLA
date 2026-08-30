@@ -30,8 +30,12 @@ import pandas as pd
 
 from argparse import RawTextHelpFormatter
 
-import config
-from arcas_utilities import process_allele
+from arcas_utilities import (
+    assert_ref_dir_valid,
+    configure_ref_dir,
+    process_allele,
+    ref_path,
+)
 
 # -------------------------------------------------------------------------------
 
@@ -96,10 +100,16 @@ def convert_allele(allele, resolution, p_group, g_group, force=False):
     return allele
 
 
-def do_conversion(file: str, resolution_string, outfile=None, force=False):
+def do_conversion(
+    file: str, resolution_string, outfile=None, force=False, reference=None
+):
+    configure_ref_dir(reference)
+    reference_dir = assert_ref_dir_valid()
+    hla_convert_json = ref_path("ref/hla.convert.json", reference_dir)
+
     # p_group, g_group = pickle.load(open(hla_convert,'rb'))
     # to do, test this
-    with open(config.hla_convert_json, "r") as json_file:
+    with open(hla_convert_json, "r") as json_file:
         p_group, g_group = json.load(json_file)
 
     # Check input resolution
@@ -181,6 +191,15 @@ def build_arg_parser(super_parser=None, subcommand_name="convert"):
     )
 
     parser.add_argument(
+        "--ref",
+        "--reference",
+        dest="reference",
+        help="built arcasHLA reference directory\n\n",
+        default=None,
+        metavar="",
+    )
+
+    parser.add_argument(
         "-o",
         "--outfile",
         type=str,
@@ -206,6 +225,7 @@ def build_arg_parser(super_parser=None, subcommand_name="convert"):
             parsed_args.resolution,
             parsed_args.outfile,
             parsed_args.force,
+            parsed_args.reference,
         )
     )
 
