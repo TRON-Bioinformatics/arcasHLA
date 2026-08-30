@@ -1,7 +1,7 @@
 # Container for arcasHLA
 
-Installs up-to-date versions of arcasHLA and all dependencies from
-`environment.yml`.
+Installs up-to-date versions of arcasHLA and all dependencies via
+[pixi](https://pixi.sh), using the pinned `pixi.toml`/`pixi.lock`.
 
 ### Build
 
