@@ -299,6 +299,12 @@ def do_partial_genotyping(
     reference_dir = assert_ref_dir_valid()
     partial_json = ref_path("ref/hla_partial.p.json", reference_dir)
     partial_idx = ref_path("ref/hla_partial.idx", reference_dir)
+    if not os.path.isfile(partial_idx):
+        sys.exit(
+            "[genotype] Error: this reference was built without a partial "
+            "index; rebuild it without `--skip-partial` to type partial "
+            "alleles."
+        )
     hla_freq = ref_path("info/hla_freq.tsv", reference_dir)
 
     # Set up directories and log file

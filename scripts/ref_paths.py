@@ -45,6 +45,11 @@ CORE_REFERENCE_FILES = (
     "info/hla_freq.tsv",
     "info/decoys_alts.json",
 )
+PARTIAL_REFERENCE_FILES = (
+    "ref/hla_partial.fasta",
+    "ref/hla_partial.idx",
+    "ref/hla_partial.p.json",
+)
 
 _repo_root = Path(__file__).resolve().parent.parent
 _legacy_ref_dir = (_repo_root / "dat").resolve()
@@ -69,6 +74,18 @@ def load_manifest(ref_dir):
         return None
 
 
+def required_reference_files(manifest, required_files=CORE_REFERENCE_FILES):
+    """Drop the partial reference files when the manifest omits them."""
+    selection = (manifest or {}).get("selection") or {}
+    if selection.get("partial_reference") == "omitted":
+        return tuple(
+            relative
+            for relative in required_files
+            if relative not in PARTIAL_REFERENCE_FILES
+        )
+    return tuple(required_files)
+
+
 def is_valid_ref_dir(path, required_files=CORE_REFERENCE_FILES):
     """Return whether path contains a usable arcasHLA reference."""
     if not path:
@@ -77,10 +94,12 @@ def is_valid_ref_dir(path, required_files=CORE_REFERENCE_FILES):
     ref_dir = Path(path).expanduser().resolve()
     if not ref_dir.is_dir():
         return False
+
+    manifest = load_manifest(ref_dir)
+    required_files = required_reference_files(manifest, required_files)
     if any(not (ref_dir / relative).is_file() for relative in required_files):
         return False
 
-    manifest = load_manifest(ref_dir)
     if ref_dir == _legacy_ref_dir:
         return (
             manifest is None or manifest.get("arcashla_ref_schema") == REFERENCE_SCHEMA

@@ -6,7 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 import reference
-from ref_paths import CORE_REFERENCE_FILES
+import ref_paths
+from ref_paths import CORE_REFERENCE_FILES, PARTIAL_REFERENCE_FILES
 
 HLA_DAT = """\
 ID   HLA00001
@@ -291,6 +292,7 @@ def test_gene_selection_reduces_reference(tmp_path, fake_kallisto):
     assert manifest["selection"] == {
         "genes": ["A"],
         "max_alleles_per_gene": 1,
+        "partial_reference": "built",
         "minified": True,
     }
     cdna = json.loads((output / "ref" / "cDNA.json").read_text())
@@ -333,5 +335,28 @@ def test_full_build_records_no_selection(tmp_path, fake_kallisto):
     assert manifest["selection"] == {
         "genes": "all",
         "max_alleles_per_gene": None,
+        "partial_reference": "built",
         "minified": False,
     }
+
+
+def test_skip_partial_omits_partial_reference(tmp_path, fake_kallisto):
+    source = make_imgt_source(tmp_path / "imgt")
+    static = make_static_data(tmp_path / "static")
+    output = tmp_path / "reference"
+
+    manifest = reference.ReferenceBuilder(
+        source,
+        output,
+        version="9.9.9",
+        skip_customize=True,
+        skip_partial=True,
+        static_data_dir=static,
+    ).build()
+
+    assert manifest["selection"]["partial_reference"] == "omitted"
+    assert manifest["selection"]["minified"] is True
+    for relative in PARTIAL_REFERENCE_FILES:
+        assert not (output / relative).exists()
+        assert relative not in manifest["files"]
+    assert ref_paths.is_valid_ref_dir(output)

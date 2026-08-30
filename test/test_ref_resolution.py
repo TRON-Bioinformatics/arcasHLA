@@ -60,3 +60,23 @@ def test_legacy_fallback_warns(tmp_path, monkeypatch):
 def test_invalid_reference_has_actionable_error(tmp_path):
     with pytest.raises(SystemExit, match="reference build --help"):
         ref_paths.get_ref_dir(tmp_path / "missing")
+
+
+def test_reference_without_partial_index_is_valid(tmp_path):
+    path = make_reference(tmp_path / "minified")
+    for relative in ref_paths.PARTIAL_REFERENCE_FILES:
+        (path / relative).unlink()
+
+    assert not ref_paths.is_valid_ref_dir(path)
+
+    (path / "manifest.json").write_text(
+        json.dumps(
+            {
+                "arcashla_ref_schema": ref_paths.REFERENCE_SCHEMA,
+                "selection": {"partial_reference": "omitted"},
+            }
+        ),
+        encoding="UTF-8",
+    )
+
+    assert ref_paths.is_valid_ref_dir(path)

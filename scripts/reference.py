@@ -51,7 +51,11 @@ from Bio.SeqRecord import SeqRecord
 
 import config
 from arcas_utilities import *
-from ref_paths import CORE_REFERENCE_FILES, REFERENCE_SCHEMA
+from ref_paths import (
+    CORE_REFERENCE_FILES,
+    REFERENCE_SCHEMA,
+    required_reference_files,
+)
 
 # -------------------------------------------------------------------------------
 #   Paths and filenames
@@ -511,6 +515,7 @@ def build_fasta(
     keep_going=False,
     genes=None,
     max_alleles_per_gene=None,
+    skip_partial=False,
 ):
     """Constructs HLA reference from processed sequences and exon locations."""
 
@@ -678,6 +683,12 @@ def build_fasta(
         jobs,
     )
 
+    if skip_partial:
+        for path in (paths.partial_fa, paths.partial_idx, paths.partial_json):
+            if path.exists():
+                path.unlink()
+        return _cdna_tables(cdna_by_allele, paths, genes, errors)
+
     log.info("[reference] Building partial HLA database")
     seq_out, allele_idx, lengths, exon_idx = partial_records(combo, other)
     partial_exons = {allele: exons[allele] for allele in partial_alleles}
@@ -692,6 +703,13 @@ def build_fasta(
         jobs,
     )
 
+    return _cdna_tables(cdna_by_allele, paths, genes, errors)
+
+
+def _cdna_tables(cdna_by_allele, paths, genes, errors):
+    """Collects the cDNA and allele group tables written alongside the
+    Kallisto indexes.
+    """
     cdna = {
         allele: sorted(values, key=lambda sequence: (len(sequence), sequence))
         for allele, values in sorted(cdna_by_allele.items())
@@ -842,6 +860,7 @@ class ReferenceBuilder:
         jobs=1,
         keep_going=False,
         skip_customize=False,
+        skip_partial=False,
         genes=None,
         max_alleles_per_gene=None,
         static_data_dir=ROOT_DIR / "dat",
@@ -852,9 +871,14 @@ class ReferenceBuilder:
         self.jobs = jobs
         self.keep_going = keep_going
         self.skip_customize = skip_customize
+        self.skip_partial = skip_partial
         self.genes = sorted({gene.upper() for gene in genes}) if genes else None
         self.max_alleles_per_gene = max_alleles_per_gene
         self.static_data_dir = Path(static_data_dir)
+
+    @property
+    def partial_reference(self):
+        return "omitted" if self.skip_partial else "built"
 
     def build(self):
         validate_imgt_source(self.paths.imgt_dir)
@@ -888,6 +912,7 @@ class ReferenceBuilder:
             keep_going=self.keep_going,
             genes=self.genes,
             max_alleles_per_gene=self.max_alleles_per_gene,
+            skip_partial=self.skip_partial,
         )
         build_convert(self.paths, self.genes)
 
@@ -929,9 +954,12 @@ class ReferenceBuilder:
         if errors:
             raise RuntimeError("\n".join(errors))
 
+        core_files = required_reference_files(
+            {"selection": {"partial_reference": self.partial_reference}}
+        )
         missing = [
             relative
-            for relative in CORE_REFERENCE_FILES
+            for relative in core_files
             if not (self.paths.out_dir / relative).is_file()
         ]
         if missing:
@@ -939,7 +967,7 @@ class ReferenceBuilder:
                 "reference build did not produce required files: " + ", ".join(missing)
             )
 
-        produced_files = set(CORE_REFERENCE_FILES)
+        produced_files = set(core_files)
         produced_files.update(
             {
                 "ref/allele_groups.json",
@@ -968,7 +996,10 @@ class ReferenceBuilder:
             "selection": {
                 "genes": self.genes or "all",
                 "max_alleles_per_gene": self.max_alleles_per_gene,
-                "minified": bool(self.genes or self.max_alleles_per_gene),
+                "partial_reference": self.partial_reference,
+                "minified": bool(
+                    self.genes or self.max_alleles_per_gene or self.skip_partial
+                ),
             },
             "customization_assets": (
                 "omitted"
@@ -997,6 +1028,7 @@ def do_reference_build(
     jobs=1,
     keep_going=False,
     skip_customize=False,
+    skip_partial=False,
     genes=None,
     max_alleles_per_gene=None,
     verbose=False,
@@ -1019,6 +1051,7 @@ def do_reference_build(
             jobs=jobs,
             keep_going=keep_going,
             skip_customize=skip_customize,
+            skip_partial=skip_partial,
             genes=genes,
             max_alleles_per_gene=max_alleles_per_gene,
         ).build()
@@ -1136,6 +1169,13 @@ def build_arg_parser(super_parser=None, subcommand_name="reference"):
     )
 
     build_parser.add_argument(
+        "--skip-partial",
+        action="store_true",
+        help="omit the partial allele index\n\n",
+        default=False,
+    )
+
+    build_parser.add_argument(
         "--genes",
         help="comma separated list of HLA genes to include\n"
         + "  default: all genes in the IMGT/HLA source\n\n",
@@ -1163,6 +1203,7 @@ def build_arg_parser(super_parser=None, subcommand_name="reference"):
             parsed_args.jobs,
             parsed_args.keep_going,
             parsed_args.skip_customize,
+            parsed_args.skip_partial,
             parsed_args.genes,
             parsed_args.max_alleles_per_gene,
             parsed_args.verbose,
