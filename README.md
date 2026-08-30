@@ -38,10 +38,15 @@ docker run --rm -v /path/to/repo:/app <image-name> pytest
 ______________________________________________________________________
 
 In order to test arcasHLA partial typing, we need to roll back the reference to
-an earlier version. First, fetch IMGT/HLA database version 3.24.0:
+an earlier version. First, fetch IMGT/HLA database version 3.24.0 and build an
+external reference from it:
 
 ```
-./arcasHLA reference --version 3.24.0
+./arcasHLA reference build \
+  --imgt /path/to/IMGTHLA-3.24.0 \
+  --outdir test/reference \
+  --version 3.24.0
+export ARCASHLA_REF_DIR="$PWD/test/reference"
 ```
 
 Extract reads:
@@ -86,12 +91,6 @@ Expected output in `test/output/test.partial_genotype.json`:
  "DRB1": ["DRB1*03:02:01", "DRB1*14:02:01"]}
 ```
 
-Remember to update the HLA reference using the following command.
-
-```
-./arcasHLA reference --update
-```
-
 ### Usage
 
 To see the list of available tools, simply enter `arcasHLA`. To view the
@@ -103,7 +102,7 @@ required and optional arguments for any of the tools enter
 - `genotype` : Genotypes HLA alleles from extracted reads (no partial alleles).
 - `partial` : Genotypes partial HLA alleles from extracted reads and output from
   `genotype` (optional).
-- `reference` : Update, specify version or force rebuilding of HLA reference.
+- `reference` : Build or manage an HLA reference.
 - `merge` : merge genotyping output for multiple samples into a single json
   file.
 
@@ -266,43 +265,31 @@ arcasHLA convert --resolution [resolution] genotypes.tsv
 
 ### Change reference
 
-To update the reference to the latest IMGT/HLA version, run
+Build references outside the repository from a clean IMGT/HLA source:
 
-```
-arcasHLA reference --update
-```
-
-If you are running multiple tools to type HLAs, it can be helpful to use the
-same version of IMGT/HLA. You can select the version you like using the
-commithash from the
-[IMGT/HLA Github](https://github.com/ANHIG/IMGTHLA/commits/Latest).
-
-```
-arcasHLA reference --version [commithash]
+```sh
+arcasHLA reference build \
+  --imgt /opt/imgt-hla/3.55.0 \
+  --outdir /opt/arcashla-ref/3.55.0
+export ARCASHLA_REF_DIR=/opt/arcashla-ref/3.55.0
 ```
 
-If you suspect there is an issue with the reference files, rebuild the reference
-with the following command
+Reference-consuming commands accept `--ref PATH` (use `--reference` with
+`quant`) to override the environment variable. The old `--update`, `--version`,
+`--commit`, and `--rebuild` modes have been removed.
 
-```
-arcasHLA reference --rebuild
-```
-
-Note: if your reference was built with arcasHLA version \<= 0.1.1 and you wish
-to change your reference to versions >= 3.35.0, it may be necessary to remove
-the IMGTHLA folder due to the need for Git Large File Storage to properly
-download hla.dat.
-
-```
-rm -rf dat/IMGTHLA
-arcasHLA reference --update
-```
+See [REFERENCE.md](REFERENCE.md) for source requirements, manifests,
+customization assets, updating, and Git LFS guidance.
 
 #### Options
 
-- `--update` : update to latest IMGT/HLA version
-- `--version` : checkout IMGT/HLA version using commithash
-- `--rebuild` : rebuild HLA database
+- `build` : build from an external IMGT/HLA source
+- `--imgt PATH` : read-only IMGT/HLA source (build mode)
+- `--outdir PATH` : built reference destination (build mode)
+- `--version LABEL` : override release detection (build mode)
+- `--force` : overwrite an existing built reference
+- `--jobs N` : Kallisto indexing jobs
+- `--skip-customize` : omit large GRCh38 customization FASTAs
 - `-v, --verbose` : verbosity (default: False)
 
 ## Build Customized References
