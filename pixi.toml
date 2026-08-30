@@ -25,6 +25,13 @@ scipy = "1.12.*"
 [tasks]
 test = { cmd = "pytest", default-environment = "default" }
 
+[tasks.all]
+depends-on = [
+  { task = "format", environment = "dev" },
+  { task = "test", environment = "default" },
+]
+description = "Format the repository, then run the test suite."
+
 # Tooling used to format and lint the repository. Kept in its own
 # no-default-feature environment so it never pulls in the (large)
 # bioinformatics runtime stack.
@@ -33,6 +40,7 @@ black = "25.12.*"
 fd-find = "10.3.*"
 mdformat = "0.7.*"
 mdformat-gfm = "1.0.*"
+tombi = "1.5.*"
 yamlfmt = "0.20.*"
 
 [feature.dev.tasks.format-python]
@@ -45,13 +53,28 @@ description = "Format Markdown files with mdformat."
 
 [feature.dev.tasks.format-yaml]
 cmd = [
-  "fd", ".*\\.ya?ml$", "-H", "--exclude", "results",
-  "--exec", "yamlfmt", "{}",
+  "fd",
+  ".*\\.ya?ml$",
+  "-H",
+  "--exclude",
+  "results",
+  "--exec",
+  "yamlfmt",
+  "{}",
 ]
 description = "Format YAML files with yamlfmt."
 
+[feature.dev.tasks.format-toml]
+cmd = ["fd", ".*\\.toml$", "-H", "--exec", "tombi", "format", "{}"]
+description = "Format TOML files with tombi."
+
 [feature.dev.tasks.format]
-depends-on = ["format-python", "format-markdown", "format-yaml"]
+depends-on = [
+  "format-python",
+  "format-markdown",
+  "format-yaml",
+  "format-toml",
+]
 description = "Run all formatters."
 
 [feature.dev.tasks.lint-python]
@@ -64,21 +87,25 @@ description = "Check Markdown formatting with mdformat."
 
 [feature.dev.tasks.lint-yaml]
 cmd = [
-  "fd", ".*\\.ya?ml$", "-H", "--exclude", "results",
-  "--exec", "yamlfmt", "--lint", "{}",
+  "fd",
+  ".*\\.ya?ml$",
+  "-H",
+  "--exclude",
+  "results",
+  "--exec",
+  "yamlfmt",
+  "--lint",
+  "{}",
 ]
 description = "Check YAML formatting with yamlfmt."
 
-[feature.dev.tasks.lint]
-depends-on = ["lint-python", "lint-markdown", "lint-yaml"]
-description = "Run all linters."
+[feature.dev.tasks.lint-toml]
+cmd = ["fd", ".*\\.toml$", "-H", "--exec", "tombi", "lint", "{}"]
+description = "Check TOML formatting with tombi."
 
-[tasks.all]
-depends-on = [
-  { task = "format", environment = "dev" },
-  { task = "test", environment = "default" },
-]
-description = "Format the repository, then run the test suite."
+[feature.dev.tasks.lint]
+depends-on = ["lint-python", "lint-markdown", "lint-yaml", "lint-toml"]
+description = "Run all linters."
 
 [environments]
 dev = { features = ["dev"], no-default-feature = true }
