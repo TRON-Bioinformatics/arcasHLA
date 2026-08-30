@@ -3,6 +3,9 @@ clean_ref
 __pycache__/
 arcashla_latest.sif
 
+# Pixi's local environments (reproducible from pixi.toml/pixi.lock)
+.pixi/
+
 # IDE specific configs
 .vscode
 

@@ -1,0 +1,84 @@
+[workspace]
+name = "arcas-hla"
+version = "0.0.1"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+# Runtime dependencies needed to run arcasHLA and its test suite.
+[dependencies]
+bedtools = "2.31.*"
+biopython = "1.83.*"
+coreutils = "9.4.*"
+git = "2.43.*"
+git-lfs = "3.4.*"
+kallisto = "0.44.*"
+numpy = "1.26.*"
+pandas = "2.2.*"
+pigz = "2.8.*"
+pip = "24.0.*"
+pyarrow = "15.0.*"
+pytest = "8.0.*"
+python = "3.10.*"
+samtools = "1.19.*"
+scipy = "1.12.*"
+
+[tasks]
+test = { cmd = "pytest", default-environment = "default" }
+
+# Tooling used to format and lint the repository. Kept in its own
+# no-default-feature environment so it never pulls in the (large)
+# bioinformatics runtime stack.
+[feature.dev.dependencies]
+black = "25.12.*"
+fd-find = "10.3.*"
+mdformat = "0.7.*"
+mdformat-gfm = "1.0.*"
+yamlfmt = "0.20.*"
+
+[feature.dev.tasks.format-python]
+cmd = ["black", "scripts", "test"]
+description = "Format Python scripts and tests with black."
+
+[feature.dev.tasks.format-markdown]
+cmd = ["fd", ".*\\.md$", "-H", "--exec", "mdformat", "{}"]
+description = "Format Markdown files with mdformat."
+
+[feature.dev.tasks.format-yaml]
+cmd = [
+  "fd", ".*\\.ya?ml$", "-H", "--exclude", "results",
+  "--exec", "yamlfmt", "{}",
+]
+description = "Format YAML files with yamlfmt."
+
+[feature.dev.tasks.format]
+depends-on = ["format-python", "format-markdown", "format-yaml"]
+description = "Run all formatters."
+
+[feature.dev.tasks.lint-python]
+cmd = ["black", "--check", "scripts", "test"]
+description = "Check Python formatting with black."
+
+[feature.dev.tasks.lint-markdown]
+cmd = ["fd", ".*\\.md$", "-H", "--exec", "mdformat", "--check", "{}"]
+description = "Check Markdown formatting with mdformat."
+
+[feature.dev.tasks.lint-yaml]
+cmd = [
+  "fd", ".*\\.ya?ml$", "-H", "--exclude", "results",
+  "--exec", "yamlfmt", "--lint", "{}",
+]
+description = "Check YAML formatting with yamlfmt."
+
+[feature.dev.tasks.lint]
+depends-on = ["lint-python", "lint-markdown", "lint-yaml"]
+description = "Run all linters."
+
+[tasks.all]
+depends-on = [
+  { task = "format", environment = "dev" },
+  { task = "test", environment = "default" },
+]
+description = "Format the repository, then run the test suite."
+
+[environments]
+dev = { features = ["dev"], no-default-feature = true }
