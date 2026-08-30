@@ -48,64 +48,77 @@ from arcas_utilities import *
 #   Paths and filenames
 # -------------------------------------------------------------------------------
 
+reference_files = {
+    "GRCh38_chr6": "ref/GRCh38.chr6.noHLA.fasta",
+    "GRCh38": "ref/GRCh38.all.noHLA.fasta",
+    "dummy_HLA_fa": "ref/GRCh38.chr6.HLA.fasta",
+}
+
 
 class ZippedRefFile:
-    _ref_file_archive = config.ref_zip_archive
-
     @classmethod
-    def _get_ref_file_from_archive(cls, ref_file: str) -> None:
+    def _get_ref_file_from_archive(cls, ref_file: str, reference_dir: str) -> None:
         """
         Unzip the archive with all the reference fasta files.
         """
-        with tf.open(cls._ref_file_archive, "r:*") as archive_file:
+        archive_path = ref_path(
+            "ref/customization_reference_fastas.tar.gz", reference_dir
+        )
+        with tf.open(archive_path, "r:*") as archive_file:
             if not ref_file in archive_file.getnames():
                 raise ValueError(
-                    f"File {ref_file} is not part of the archive at "
-                    f"{cls._ref_file_archive}."
+                    f"File {ref_file} is not part of the archive at {archive_path}."
                 )
 
             archive_file.extractall(
                 members=[archive_file.getmember(ref_file)],
-                path=os.path.dirname(cls._ref_file_archive),
+                path=os.path.dirname(archive_path),
             )
 
     @classmethod
-    def get_reference_path(cls, ref_name: str) -> str:
+    def get_reference_path(cls, ref_name: str, reference_dir: str) -> str:
         """
         Get the path to one of the reference fasta files, ensuring the file is
         present by unzipping the archive if it is not.
         """
-        ref_path = config.zipped_ref_files[ref_name]
+        path = ref_path(reference_files[ref_name], reference_dir)
 
-        if not os.path.exists(ref_path):
-            cls._get_ref_file_from_archive(os.path.basename(ref_path))
+        if not os.path.exists(path):
+            cls._get_ref_file_from_archive(os.path.basename(path), reference_dir)
 
-        return ref_path
+        return path
 
 
 # -------------------------------------------------------------------------------
 
 
 def build_custom_reference(
-    subject, genotype, grouping, transcriptome_type, temp, outdir
+    subject, genotype, grouping, transcriptome_type, temp, outdir, reference_dir
 ):
 
     dummy_HLA_dict = SeqIO.to_dict(
-        SeqIO.parse(ZippedRefFile.get_reference_path("dummy_HLA_fa"), "fasta")
+        SeqIO.parse(
+            ZippedRefFile.get_reference_path("dummy_HLA_fa", reference_dir), "fasta"
+        )
     )
 
     if transcriptome_type == "none":
         transcriptome = []
     elif transcriptome_type == "chr6":
         transcriptome = list(
-            SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38_chr6"), "fasta")
+            SeqIO.parse(
+                ZippedRefFile.get_reference_path("GRCh38_chr6", reference_dir),
+                "fasta",
+            )
         )
     else:
         transcriptome = list(
-            SeqIO.parse(ZippedRefFile.get_reference_path("GRCh38"), "fasta")
+            SeqIO.parse(
+                ZippedRefFile.get_reference_path("GRCh38", reference_dir), "fasta"
+            )
         )
 
-    with open(config.hla_transcripts_json, "r") as file:
+    with open(ref_path("ref/hla_transcripts.json", reference_dir), "r") as file:
         HLA_transcripts = json.load(file)
 
     genes = {allele_id[:-1] for allele_id in genotype.keys()}
@@ -113,19 +126,19 @@ def build_custom_reference(
         for transcript in HLA_transcripts[gene]:
             transcriptome.append(dummy_HLA_dict[transcript])
 
-    with open(config.allele_group_json, "r") as file:
+    with open(ref_path("ref/allele_groups.json", reference_dir), "r") as file:
         groups_temp = json.load(file)
         groups = defaultdict(list)
         for k, v in groups_temp.items():
             groups[k] = set(v)
 
-    with open(config.cdna_json, "r") as file:
+    with open(ref_path("ref/cDNA.json", reference_dir), "r") as file:
         cDNA_temp = json.load(file)
         cDNA = defaultdict(list)
         for k, v in cDNA_temp.items():
             cDNA[k] = set(v)
 
-    with open(config.cdna_single_json, "r") as file:
+    with open(ref_path("ref/cDNA.single.json", reference_dir), "r") as file:
         cDNA_single = json.load(file)
 
     indv_fasta = "".join([temp, subject, ".fasta"])
@@ -223,9 +236,13 @@ def do_customization(
     keep_files=False,
     temp="/tmp/",
     verbose=False,
+    reference=None,
 ):
     if resolution != 2:
         sys.exit("[customize] only 2-field resolution supported at this time.")
+
+    configure_ref_dir(reference)
+    reference_dir = assert_ref_dir_valid()
 
     outdir = check_path(outdir)
 
@@ -246,7 +263,9 @@ def do_customization(
 
         genotype = process_json_genotype(input_genotype, genes)
 
-        build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
+        build_custom_reference(
+            subject, genotype, grouping, transcriptome, temp, outdir, reference_dir
+        )
 
     elif genotype.endswith(".genotypes.json") or genotype.endswith(".tsv"):
         temp = create_temp(temp)
@@ -310,6 +329,8 @@ def do_customization(
             outdir + "/{//}",
             "--temp",
             temp + "/{//}",
+            "--ref",
+            reference_dir,
         ]
 
         if verbose:
@@ -324,7 +345,9 @@ def do_customization(
     else:
         genotype = process_str_genotype(genotype, genes)
 
-        build_custom_reference(subject, genotype, grouping, transcriptome, temp, outdir)
+        build_custom_reference(
+            subject, genotype, grouping, transcriptome, temp, outdir, reference_dir
+        )
 
 
 def build_arg_parser(super_parser=None, subcommand_name="customize"):
@@ -364,6 +387,15 @@ def build_arg_parser(super_parser=None, subcommand_name="customize"):
         default="",
         metavar="",
         type=str,
+    )
+
+    parser.add_argument(
+        "--ref",
+        "--reference",
+        dest="reference",
+        help="built arcasHLA reference directory\n\n",
+        default=None,
+        metavar="",
     )
 
     parser.add_argument(
@@ -431,6 +463,7 @@ def build_arg_parser(super_parser=None, subcommand_name="customize"):
             parsed_args.keep_files,
             parsed_args.temp,
             parsed_args.verbose,
+            parsed_args.reference,
         )
     )
 
