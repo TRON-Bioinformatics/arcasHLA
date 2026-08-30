@@ -1,5 +1,10 @@
 FROM ghcr.io/prefix-dev/pixi:0.78.0
 
+ARG IMGT_HLA_VERSION=""
+ARG ARCASHLA_REF_DIR=/opt/arcashla-ref
+ENV ARCASHLA_REF_DIR=${ARCASHLA_REF_DIR}
+
+
 WORKDIR /app/arcasHLA
 COPY . /app/arcasHLA
 
@@ -17,6 +22,15 @@ RUN echo 'export PATH="/app/arcasHLA:$PATH"' >> /shell-hook.sh
 
 # extend the shell-hook script to run the command passed to the container
 RUN echo 'exec "$@"' >> /shell-hook.sh
+
+RUN if [ -n "${IMGT_HLA_VERSION}" ]; then \
+        git clone --depth 1 --branch "${IMGT_HLA_VERSION}" \
+            https://github.com/ANHIG/IMGTHLA.git /opt/imgt-hla && \
+        ./arcasHLA reference build \
+            --imgt /opt/imgt-hla \
+            --outdir "${ARCASHLA_REF_DIR}" \
+            --version "${IMGT_HLA_VERSION}"; \
+    fi
 
 # set the entrypoint to the shell-hook script (activate the environment and run the command)
 # no more pixi needed in the prod container
