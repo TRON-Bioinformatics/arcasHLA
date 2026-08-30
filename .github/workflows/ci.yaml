@@ -6,41 +6,18 @@ jobs:
     runs-on: "ubuntu-24.04"
     steps:
       - uses: actions/checkout@v4
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          environment-file: dev_environment.conda-lock.yml
-          environment-name: ci-conda-env
-          init-shell: bash
-          # Ensure issues with the channel priority in the environment are
-          # caught.
-          condarc: |
-            channel_priority: strict
-          # Persist the environment for all runs using this lockfile.
-          cache-environment: true
-          cache-environment-key: environment-${{ hashFiles('dev_environment.conda-lock.yml')
-            }}
-          post-cleanup: "none"
-      - run: |
-          make lint
-        shell: bash -el {0}
+          environments: dev
+          cache: true
+          pixi-version: v0.78.0
+      - run: pixi run lint
   tests:
     runs-on: "ubuntu-24.04"
     steps:
       - uses: actions/checkout@v4
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          environment-file: dev_environment.conda-lock.yml
-          environment-name: ci-conda-env
-          init-shell: bash
-          # Ensure issues with the channel priority in the environment are
-          # caught.
-          condarc: |
-            channel_priority: strict
-          # Persist the environment for all runs using this lockfile.
-          cache-environment: true
-          cache-environment-key: environment-${{ hashFiles('dev_environment.conda-lock.yml')
-            }}
-          post-cleanup: "none"
-      - run: |
-          make test
-        shell: bash -el {0}
+          cache: true
+          pixi-version: v0.78.0
+      - run: pixi run test
