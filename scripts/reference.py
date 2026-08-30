@@ -591,7 +591,9 @@ def build_fasta(paths, version_token, jobs=1, keep_going=False):
         build_combination(allele)
 
     cDNA = {seq: sorted(alleles) for seq, alleles in cDNA.items()}
-    other = list(other)
+    # Sorted so that UTR record order, and therefore the record identifiers
+    # and file checksums, do not depend on string hash randomization.
+    other = sorted(other)
     gene_length = {g: get_mode(lengths) for g, lengths in gene_length.items()}
 
     errors = []

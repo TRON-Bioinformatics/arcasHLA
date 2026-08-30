@@ -11,6 +11,7 @@ from ref_paths import CORE_REFERENCE_FILES
 HLA_DAT = """\
 ID   HLA00001
 FT   allele="HLA-A*01:01:01"
+FT   UTR             1..3
 FT   exon            1..3
 FT                   /number="1"
 FT   exon            4..6
@@ -27,6 +28,7 @@ FT   exon            19..21
 FT                   /number="7"
 FT   exon            22..24
 FT                   /number="8"
+FT   UTR             22..24
 SQ   Sequence 24 BP;
      atgaaacccgggtttaaacccggg 24
 //
@@ -48,6 +50,7 @@ FT   exon            19..21
 FT                   /number="7"
 FT   exon            22..24
 FT                   /number="8"
+FT   UTR             22..24
 SQ   Sequence 24 BP;
      atgcccgggtttaaacccgggttt 24
 //
@@ -158,6 +161,49 @@ def test_build_refuses_existing_manifest(tmp_path, fake_kallisto):
             skip_customize=True,
             static_data_dir=static,
         ).build()
+
+
+def read_fasta(path):
+    sequences = {}
+    identifier = None
+    for line in Path(path).read_text(encoding="UTF-8").splitlines():
+        if line.startswith(">"):
+            identifier = line[1:].split()[0]
+            sequences[identifier] = ""
+        elif identifier:
+            sequences[identifier] += line.strip()
+    return sequences
+
+
+def test_utr_records_are_sorted(tmp_path, fake_kallisto):
+    # UTR sequences are collected in a set; without an explicit sort their
+    # record order, and therefore every downstream checksum, varies with
+    # string hash randomization between builds.
+    source = make_imgt_source(tmp_path / "imgt")
+    static = make_static_data(tmp_path / "static")
+    output = tmp_path / "reference"
+
+    reference.ReferenceBuilder(
+        source,
+        output,
+        version="9.9.9",
+        skip_customize=True,
+        static_data_dir=static,
+    ).build()
+
+    _, payload = json.loads((output / "ref" / "hla.p.json").read_text())
+    allele_index = json.loads(payload[1])
+    sequences = read_fasta(output / "ref" / "hla.fasta")
+    utr_records = [
+        sequences[identifier]
+        for identifier in sorted(
+            (key for key, value in allele_index.items() if value is None),
+            key=int,
+        )
+    ]
+
+    assert len(utr_records) > 1
+    assert utr_records == sorted(utr_records)
 
 
 def test_force_rebuild_is_deterministic(tmp_path, fake_kallisto):
