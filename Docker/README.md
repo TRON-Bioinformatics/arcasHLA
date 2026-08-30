@@ -5,11 +5,11 @@ Installs up-to-date versions of arcasHLA and all dependencies from
 
 ### Build
 
-In order to use this arcasHLA container, install Docker and build in this
-directory:
+In order to use this arcasHLA container, install Docker and build from the
+repository root. The local checkout is copied into the image:
 
-```
-docker build -t <image_name> .
+```sh
+docker build -t <image_name> -f Docker/Dockerfile .
 ```
 
 ### Run

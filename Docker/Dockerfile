@@ -2,13 +2,10 @@ FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
-# Install Git LFS
-RUN apt-get update && \
-    apt-get install -y git curl pigz
-RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-RUN apt-get install -y git-lfs
+COPY environment.yml /tmp/environment.yml
+RUN conda env create --file /tmp/environment.yml && \
+    conda clean --all --yes
 
-RUN git clone https://github.com/RabadanLab/arcasHLA.git
-RUN conda env create -f /app/arcasHLA/environment.yml
-RUN echo "source activate arcas-hla" > ~/.bashrc
-ENV PATH /opt/conda/envs/arcas-hla/bin:$PATH
+COPY . .
+
+ENV PATH="/app:/opt/conda/envs/arcas-hla/bin:${PATH}"
