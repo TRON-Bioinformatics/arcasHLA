@@ -20,7 +20,7 @@
 #   handled by scripts/arcasHLA.py, so this wrapper just forwards to it.
 #-----------------------------------------------------------------------------
 
-ARCASHLA_ROOT_DIR=$(realpath $(dirname $0))
+ARCASHLA_ROOT_DIR=$(realpath "$(dirname "$0")")
 
-python3 ${ARCASHLA_ROOT_DIR}/scripts/arcasHLA.py "$@"
+python3 "${ARCASHLA_ROOT_DIR}/scripts/arcasHLA.py" "$@"
 #-------------------------------------------------------------------------------
