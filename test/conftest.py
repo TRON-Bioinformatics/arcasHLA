@@ -43,3 +43,8 @@ def extract_reads(tmp_path_factory):
         for outfile in sorted(os.listdir(output_dir))
         if outfile.endswith(".fq.gz") and outfile.startswith("test")
     ]
+
+
+@pytest.fixture(scope="session")
+def expected_output_dir(repo_root):
+    return os.path.join(repo_root, "test/expected_output")
