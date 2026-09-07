@@ -8,6 +8,7 @@ import subprocess
 
 from pathlib import Path
 
+from customize import do_customization
 from extract import do_extraction
 
 
@@ -48,3 +49,22 @@ def extract_reads(tmp_path_factory):
 @pytest.fixture(scope="session")
 def expected_output_dir(repo_root):
     return os.path.join(repo_root, "test/expected_output")
+
+
+@pytest.fixture(scope="session")
+def customize_reference(expected_output_dir, tmp_path_factory):
+    """
+    Provide a reference customized to the expected genotypes.
+    """
+    subject_name = "test"
+
+    output_dir = str(tmp_path_factory.mktemp("custom_reference"))
+
+    genotype_result_path = os.path.join(expected_output_dir, "test.genotype.json")
+
+    do_customization(
+        genotype=genotype_result_path, outdir=output_dir, subject=subject_name
+    )
+
+    # Provide the path to the customized reference.
+    return output_dir + "/" + subject_name
