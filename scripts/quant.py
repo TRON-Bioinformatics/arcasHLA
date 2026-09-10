@@ -53,8 +53,6 @@ def do_quantification(
     temp="/tmp/",
     verbose=False,
 ):
-    paired = not single
-
     if sample == None:
         sample = os.path.basename(file[0]).split(".")[0]
     else:
@@ -73,11 +71,7 @@ def do_quantification(
     loh_results_tsv = outdir + sample + ".quant.loh.tsv"
 
     with open(indv_p, "rb") as json_file:
-        genes, genotype, hla_idx, allele_idx, lengths = pickle.load(json_file)
-
-    idx_allele = defaultdict(set)
-    for idx, gene in allele_idx.items():
-        idx_allele[gene].add(idx)
+        genes, genotype, _, allele_idx, _ = pickle.load(json_file)
 
     if file[0].endswith(".fq.gz") or file[0].endswith(".fastq.gz"):
 
@@ -216,13 +210,6 @@ def do_quantification(
             correction2 = (2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
                 purity
             )
-
-            if correction1 < correction2:
-                minor = correction1
-                major = correction2
-            else:
-                minor = correction2
-                major = correction1
 
             corrections_df.at[0, gene + "_CN_1"] = correction1
             corrections_df.at[0, gene + "_CN_2"] = correction2
