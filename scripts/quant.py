@@ -23,7 +23,6 @@
 # -------------------------------------------------------------------------------
 
 import os
-import re
 import json
 import pickle
 import sys
@@ -73,35 +72,20 @@ def do_quantification(
     with open(indv_p, "rb") as json_file:
         genes, genotype, _, allele_idx, _ = pickle.load(json_file)
 
-    if file[0].endswith(".fq.gz") or file[0].endswith(".fastq.gz"):
+    command = ["kallisto", "quant", "-i", indv_idx, "-o", temp, "-t", threads]
 
-        command = ["kallisto", "quant", "-i", indv_idx, "-o", temp, "-t", threads]
+    if single:
+        command.extend(["--single -l", str(avg), "-s", str(std)])
 
-        if single:
-            command.extend(["--single -l", str(avg), "-s", str(std)])
+    command.extend(file)
 
-        command.extend(file)
+    output = run_command(command, "[quant] Quantifying with Kallisto: ").stderr.decode()
 
-        output = run_command(
-            command, "[quant] Quantifying with Kallisto: "
-        ).stderr.decode()
+    if verbose:
+        print(output)
 
-        if verbose:
-            print(output)
-
-        total_reads = re.findall("(?<=processed ).+(?= reads,)", output)[0]
-        total_reads = int(re.sub(",", "", total_reads))
-        aligned_reads = re.findall("(?<=reads, ).+(?= reads pseudoaligned)", output)[0]
-        aligned_reads = int(re.sub(",", "", aligned_reads))
-
-        run_command(["mv", temp + "/abundance.tsv", indv_abundance])
-        kallisto_results = pd.read_csv(indv_abundance, sep="\t")
-
-    else:
-        with open(file[1], "r") as json_file:
-            previous_results = json.load(json_file)
-
-        kallisto_results = pd.read_csv(file[0], sep="\t")
+    run_command(["mv", temp + "/abundance.tsv", indv_abundance])
+    kallisto_results = pd.read_csv(indv_abundance, sep="\t")
 
     idx_allele = defaultdict(set)
     hla_indices = set()
@@ -244,13 +228,7 @@ def arg_check_files(parser, arg):
     for file in arg.split():
         if not os.path.isfile(file):
             parser.error("The file %s does not exist." % file)
-        elif not (
-            file.endswith("alignment.p")
-            or file.endswith(".fq.gz")
-            or file.endswith(".fastq.gz")
-            or file.endswith(".tsv")
-            or file.endswith(".json")
-        ):
+        elif not (file.endswith(".fq.gz") or file.endswith(".fastq.gz")):
             parser.error("The format of %s is invalid." % file)
         return arg
 
