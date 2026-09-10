@@ -97,6 +97,22 @@ def load_genotyping_data(genotyping_pickle_file: str) -> tuple:
     return (genes, genotype, idx_allele)
 
 
+def parse_kallisto_results(
+    kallisto_results: pd.DataFrame, gene_indices: dict
+) -> tuple[dict, dict, dict]:
+    lengths = defaultdict(float)
+    counts = defaultdict(float)
+    tpm = defaultdict(float)
+
+    for gene, indices in gene_indices.items():
+        for idx in indices:
+            counts[gene] += kallisto_results.loc[int(idx)]["est_counts"]
+            lengths[gene] += kallisto_results.loc[int(idx)]["length"]
+            tpm[gene] += kallisto_results.loc[int(idx)]["tpm"]
+
+    return (lengths, counts, tpm)
+
+
 def do_quantification(
     file,
     sample=None,
@@ -138,17 +154,9 @@ def do_quantification(
 
     genes, genotype, idx_allele = load_genotyping_data(indv_p)
 
-    lengths = defaultdict(float)
-    counts = defaultdict(float)
-    tpm = defaultdict(float)
-    for gene, indices in idx_allele.items():
-        for idx in indices:
-            counts[gene] += kallisto_results.loc[int(idx)]["est_counts"]
-            lengths[gene] += kallisto_results.loc[int(idx)]["length"]
-            tpm[gene] += kallisto_results.loc[int(idx)]["tpm"]
+    _, counts, tpm = parse_kallisto_results(kallisto_results, idx_allele)
 
     gene_results = {gene: defaultdict(int) for gene in genes}
-
     allele_results = {gene: defaultdict(float) for gene in genes}
 
     total_hla_count = 0
