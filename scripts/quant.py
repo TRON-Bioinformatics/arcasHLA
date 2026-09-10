@@ -36,21 +36,65 @@ from collections import defaultdict
 from arcas_utilities import *
 
 
+def run_kallisto(
+    file_list: list[str],
+    quant_ref_index: str,
+    gene_abundance_output: str,
+    output_dir: str,
+    avg_frag_len: float = 200.0,
+    sd_frag_len: float = 20,
+    threads: int = 1,
+    single: bool = False,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """Runs kallisto quant and returns its stderr output."""
+    command = [
+        "kallisto",
+        "quant",
+        "-i",
+        quant_ref_index,
+        "-o",
+        output_dir,
+        "-t",
+        str(threads),
+    ]
+
+    if single:
+        command.extend(
+            [
+                "--single",
+                "--fragment-length",
+                str(avg_frag_len),
+                "--sd",
+                str(sd_frag_len),
+            ]
+        )
+
+    command.extend(file_list)
+
+    output = run_command(command, "[quant] Quantifying with Kallisto: ").stderr.decode()
+
+    if verbose:
+        print(output)
+
+    run_command(["mv", output_dir + "/abundance.tsv", gene_abundance_output])
+    kallisto_results = pd.read_csv(gene_abundance_output, sep="\t")
+
+    return kallisto_results
+
+
 def do_quantification(
     file,
     sample=None,
     ref=None,
-    avg=200,
-    std=20,
     single=False,
     LOH=False,
     purity=1.0,
     ploidy=2.0,
-    threads="1",
     outdir="./",
     keep_files=False,
     temp="/tmp/",
-    verbose=False,
+    **kallisto_args
 ):
     if sample == None:
         sample = os.path.basename(file[0]).split(".")[0]
@@ -72,20 +116,14 @@ def do_quantification(
     with open(indv_p, "rb") as json_file:
         genes, genotype, _, allele_idx, _ = pickle.load(json_file)
 
-    command = ["kallisto", "quant", "-i", indv_idx, "-o", temp, "-t", threads]
-
-    if single:
-        command.extend(["--single -l", str(avg), "-s", str(std)])
-
-    command.extend(file)
-
-    output = run_command(command, "[quant] Quantifying with Kallisto: ").stderr.decode()
-
-    if verbose:
-        print(output)
-
-    run_command(["mv", temp + "/abundance.tsv", indv_abundance])
-    kallisto_results = pd.read_csv(indv_abundance, sep="\t")
+    kallisto_results = run_kallisto(
+        file_list=file,
+        quant_ref_index=indv_idx,
+        gene_abundance_output=indv_abundance,
+        output_dir=temp,
+        single=single,
+        **kallisto_args,
+    )
 
     idx_allele = defaultdict(set)
     hla_indices = set()
@@ -343,17 +381,17 @@ def build_arg_parser(super_parser=None, subcommand_name="quant"):
             parsed_args.file,
             parsed_args.sample,
             parsed_args.ref,
-            parsed_args.avg,
-            parsed_args.std,
-            parsed_args.single,
-            parsed_args.LOH,
-            parsed_args.purity,
-            parsed_args.ploidy,
-            parsed_args.threads,
-            parsed_args.outdir,
-            parsed_args.keep_files,
-            parsed_args.temp,
-            parsed_args.verbose,
+            single=parsed_args.single,
+            LOH=parsed_args.LOH,
+            purity=parsed_args.purity,
+            ploidy=parsed_args.ploidy,
+            outdir=parsed_args.outdir,
+            keep_files=parsed_args.keep_files,
+            temp=parsed_args.temp,
+            avg_frag_len=parsed_args.avg,
+            sd_frag_len=parsed_args.std,
+            threads=parsed_args.threads,
+            verbose=parsed_args.verbose,
         )
     )
 
