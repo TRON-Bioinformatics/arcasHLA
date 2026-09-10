@@ -113,6 +113,48 @@ def parse_kallisto_results(
     return (lengths, counts, tpm)
 
 
+def compute_quant_metrics(
+    genes: list[str],
+    genotype: dict[int, str],
+    counts: dict[str, float],
+    tpm: dict[str, float],
+) -> tuple[dict, dict]:
+    gene_results = {gene: defaultdict(int) for gene in genes}
+    allele_results = {gene: defaultdict(float) for gene in genes}
+
+    total_hla_count = 0
+    for allele_id, allele in genotype.items():
+        allele_results[allele_id[:-1]]["allele" + allele_id[-1]] = allele
+        total_hla_count += counts[allele_id]
+
+    for gene, allele_ids in genes.items():
+        for allele_id in set(allele_ids):
+            gene_results[gene]["count"] += round(counts[allele_id])
+            gene_results[gene]["tpm"] += round(tpm[allele_id])
+            if counts[allele_id]:
+                gene_results[gene]["abundance"] += counts[allele_id] / total_hla_count
+
+            allele_results[gene]["allele" + allele_id[-1] + "_count"] = round(
+                counts[allele_id]
+            )
+            allele_results[gene]["allele" + allele_id[-1] + "_tpm"] = round(
+                tpm[allele_id]
+            )
+    for gene, allele_ids in genes.items():
+        for allele_id in set(allele_ids):
+            baf = allele_results[gene]["allele1_count"] / (
+                allele_results[gene]["allele1_count"]
+                + allele_results[gene]["allele2_count"]
+            )
+            allele_results[gene]["baf"] = round(min(baf, 1 - baf), 2)
+    for gene in genes:
+        gene_results[gene]["abundance"] = (
+            str(round(gene_results[gene]["abundance"] * 100, 2)) + "%"
+        )
+
+    return (gene_results, allele_results)
+
+
 def do_quantification(
     file,
     sample=None,
@@ -156,38 +198,7 @@ def do_quantification(
 
     _, counts, tpm = parse_kallisto_results(kallisto_results, idx_allele)
 
-    gene_results = {gene: defaultdict(int) for gene in genes}
-    allele_results = {gene: defaultdict(float) for gene in genes}
-
-    total_hla_count = 0
-    for allele_id, allele in genotype.items():
-        allele_results[allele_id[:-1]]["allele" + allele_id[-1]] = allele
-        total_hla_count += counts[allele_id]
-
-    for gene, allele_ids in genes.items():
-        for allele_id in set(allele_ids):
-            gene_results[gene]["count"] += round(counts[allele_id])
-            gene_results[gene]["tpm"] += round(tpm[allele_id])
-            if counts[allele_id]:
-                gene_results[gene]["abundance"] += counts[allele_id] / total_hla_count
-
-            allele_results[gene]["allele" + allele_id[-1] + "_count"] = round(
-                counts[allele_id]
-            )
-            allele_results[gene]["allele" + allele_id[-1] + "_tpm"] = round(
-                tpm[allele_id]
-            )
-    for gene, allele_ids in genes.items():
-        for allele_id in set(allele_ids):
-            baf = allele_results[gene]["allele1_count"] / (
-                allele_results[gene]["allele1_count"]
-                + allele_results[gene]["allele2_count"]
-            )
-            allele_results[gene]["baf"] = round(min(baf, 1 - baf), 2)
-    for gene in genes:
-        gene_results[gene]["abundance"] = (
-            str(round(gene_results[gene]["abundance"] * 100, 2)) + "%"
-        )
+    gene_results, allele_results = compute_quant_metrics(genes, genotype, counts, tpm)
 
     df = pd.DataFrame(allele_results).T
     df.index.names = ["gene"]
