@@ -194,6 +194,57 @@ def save_gene_results(
         json.dump(gene_results, file)
 
 
+def compute_loh_correction_df(
+    allele_results: dict[str, dict], genes: list[str], purity: float, ploidy: float
+) -> pd.DataFrame:
+    corrections_columns = []
+
+    for gene in genes:
+        corrections_columns.append(gene + "_CN_1")
+        corrections_columns.append(gene + "_CN_2")
+        corrections_columns.append(gene + "_LOSS")
+        corrections_columns.append(gene + "_lost")
+
+    corrections_df = pd.DataFrame(columns=corrections_columns)
+
+    for gene in genes:
+        baf1 = allele_results[gene]["allele1_count"] / (
+            allele_results[gene]["allele1_count"]
+            + allele_results[gene]["allele2_count"]
+        )
+        baf2 = 1 - baf1
+
+        correction1 = (2 * baf1 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
+            purity
+        )
+        correction2 = (2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
+            purity
+        )
+
+        corrections_df.at[0, gene + "_CN_1"] = correction1
+        corrections_df.at[0, gene + "_CN_2"] = correction2
+
+        if (correction1 < 0.5) or (correction2 < 0.5):
+            corrections_df.at[0, gene + "_LOSS"] = True
+
+            if (correction1 < 0.5) and (correction2 < 0.5):
+                corrections_df.at[0, gene + "_lost"] = ",".join(
+                    allele_results[gene][["allele1", "allele2"]].tolist()
+                )
+
+            elif correction1 < 0.5:
+                corrections_df.at[0, gene + "_lost"] = allele_results[gene]["allele1"]
+
+            else:
+                corrections_df.at[0, gene + "_lost"] = allele_results[gene]["allele2"]
+
+        else:
+            corrections_df.at[0, gene + "_LOSS"] = False
+            corrections_df.at[0, gene + "_lost"] = "none"
+
+    return corrections_df
+
+
 def do_quantification(
     file,
     sample=None,
@@ -248,54 +299,9 @@ def do_quantification(
 
     # LOH functionality
     if LOH:
-        corrections_columns = []
-
-        for gene in genes:
-            corrections_columns.append(gene + "_CN_1")
-            corrections_columns.append(gene + "_CN_2")
-            corrections_columns.append(gene + "_LOSS")
-            corrections_columns.append(gene + "_lost")
-
-        corrections_df = pd.DataFrame(columns=corrections_columns)
-
-        for gene in genes:
-            baf1 = allele_results[gene]["allele1_count"] / (
-                allele_results[gene]["allele1_count"]
-                + allele_results[gene]["allele2_count"]
-            )
-            baf2 = 1 - baf1
-
-            correction1 = (2 * baf1 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
-                purity
-            )
-            correction2 = (2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
-                purity
-            )
-
-            corrections_df.at[0, gene + "_CN_1"] = correction1
-            corrections_df.at[0, gene + "_CN_2"] = correction2
-
-            if (correction1 < 0.5) or (correction2 < 0.5):
-                corrections_df.at[0, gene + "_LOSS"] = True
-
-                if (correction1 < 0.5) and (correction2 < 0.5):
-                    corrections_df.at[0, gene + "_lost"] = ",".join(
-                        allele_results[gene][["allele1", "allele2"]].tolist()
-                    )
-
-                elif correction1 < 0.5:
-                    corrections_df.at[0, gene + "_lost"] = allele_results[gene][
-                        "allele1"
-                    ]
-
-                else:
-                    corrections_df.at[0, gene + "_lost"] = allele_results[gene][
-                        "allele2"
-                    ]
-
-            else:
-                corrections_df.at[0, gene + "_LOSS"] = False
-                corrections_df.at[0, gene + "_lost"] = "none"
+        corrections_df = compute_loh_correction_df(
+            allele_results, genes, purity, ploidy
+        )
 
         corrections_df.to_csv(loh_results_tsv, sep="\t", index=False)
 
