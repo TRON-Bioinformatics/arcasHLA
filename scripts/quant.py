@@ -83,6 +83,20 @@ def run_kallisto(
     return kallisto_results
 
 
+def load_genotyping_data(genotyping_pickle_file: str) -> tuple:
+    with open(genotyping_pickle_file, "rb") as picke_file:
+        genes, genotype, _, allele_idx, _ = pickle.load(picke_file)
+
+    idx_allele = defaultdict(set)
+    hla_indices = set()
+    for idx, gene in allele_idx.items():
+        if gene[:-1] in genes:
+            idx_allele[gene].add(idx)
+            hla_indices.add(int(idx))
+
+    return (genes, genotype, idx_allele)
+
+
 def do_quantification(
     file,
     sample=None,
@@ -113,9 +127,6 @@ def do_quantification(
     gene_results_tsv = outdir + sample + ".quant.genes.tsv"
     loh_results_tsv = outdir + sample + ".quant.loh.tsv"
 
-    with open(indv_p, "rb") as json_file:
-        genes, genotype, _, allele_idx, _ = pickle.load(json_file)
-
     kallisto_results = run_kallisto(
         file_list=file,
         quant_ref_index=indv_idx,
@@ -125,12 +136,7 @@ def do_quantification(
         **kallisto_args,
     )
 
-    idx_allele = defaultdict(set)
-    hla_indices = set()
-    for idx, gene in allele_idx.items():
-        if gene[:-1] in genes:
-            idx_allele[gene].add(idx)
-            hla_indices.add(int(idx))
+    genes, genotype, idx_allele = load_genotyping_data(indv_p)
 
     lengths = defaultdict(float)
     counts = defaultdict(float)
