@@ -155,6 +155,32 @@ def compute_quant_metrics(
     return (gene_results, allele_results)
 
 
+def save_allele_results(
+    allele_results: dict[str, dict], output_tsv_file: str, output_json_file: str
+) -> None:
+    df = pd.DataFrame(allele_results).T
+    df.index.names = ["gene"]
+    try:
+        df = df[
+            [
+                "allele1",
+                "allele2",
+                "allele1_count",
+                "allele2_count",
+                "allele1_tpm",
+                "allele2_tpm",
+                "baf",
+            ]
+        ]
+    except:
+        df = df[["allele1", "allele1_count", "allele1_tpm"]]
+
+    df.to_csv(output_tsv_file, sep="\t")
+
+    with open(output_json_file, "w") as file:
+        json.dump(allele_results, file)
+
+
 def do_quantification(
     file,
     sample=None,
@@ -200,31 +226,12 @@ def do_quantification(
 
     gene_results, allele_results = compute_quant_metrics(genes, genotype, counts, tpm)
 
-    df = pd.DataFrame(allele_results).T
-    df.index.names = ["gene"]
-    try:
-        df = df[
-            [
-                "allele1",
-                "allele2",
-                "allele1_count",
-                "allele2_count",
-                "allele1_tpm",
-                "allele2_tpm",
-                "baf",
-            ]
-        ]
-    except:
-        df = df[["allele1", "allele1_count", "allele1_tpm"]]
-    df.to_csv(allele_results_tsv, sep="\t")
+    save_allele_results(allele_results, allele_results_tsv, allele_results_json)
 
     df = pd.DataFrame(gene_results).T
     df.index.names = ["gene"]
     df = df[["count", "tpm", "abundance"]]
     df.to_csv(gene_results_tsv, sep="\t")
-
-    with open(allele_results_json, "w") as file:
-        json.dump(allele_results, file)
 
     with open(gene_results_json, "w") as file:
         json.dump(gene_results, file)
