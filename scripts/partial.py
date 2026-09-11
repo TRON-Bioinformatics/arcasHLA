@@ -255,7 +255,7 @@ def type_partial(
             a1, a2 = sorted(explained_reads.items(), key=lambda x: x[1], reverse=True)[
                 0
             ][0]
-        group = re.sub("['\[\]]", "", group)
+        group = re.sub(r"['\[\]]", "", group)
         log.info(
             "\t\texons {: <22}\t{: <28}\t{:.2f}%".format(
                 group, ", ".join([a1, a2]), top_perc * 100

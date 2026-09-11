@@ -142,7 +142,7 @@ def parse_hla_allele_data():
             partial = True
 
         # Allele name and gene
-        elif line.startswith("FT") and re.search('allele\="HLA-', line):
+        elif line.startswith("FT") and re.search(r'allele="HLA-', line):
             allele = re.split("HLA-", re.sub('["\n]', "", line))[1]
             gene = get_gene(allele)
 
@@ -151,7 +151,7 @@ def parse_hla_allele_data():
 
         # Exon coordinates
         elif line.startswith("FT") and re.search("exon", line):
-            info = re.split("\s+", line)
+            info = re.split(r"\s+", line)
             start = int(info[2].split("..")[0]) - 1
             stop = int(info[2].split("..")[1])
             exon_coord = [start, stop]
@@ -164,8 +164,8 @@ def parse_hla_allele_data():
             exon = False
 
         # UTRs
-        elif line.startswith("FT") and (re.search("\sUTR\s", line)):
-            info = re.split("\s+", line)
+        elif line.startswith("FT") and (re.search(r"\sUTR\s", line)):
+            info = re.split(r"\s+", line)
             start = int(info[2].split("..")[0]) - 1
             stop = int(info[2].split("..")[1])
             utr_coord = [start, stop]
