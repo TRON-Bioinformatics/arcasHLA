@@ -87,8 +87,12 @@ def tool_is_available(tool):
     return which(tool) is not None
 
 
-def run_command(command, message=""):
-    """Outputs message and command to log, runs command and returns output."""
+def run_command(command, message="", ignore_exit_status=False):
+    """Outputs message and command to log, runs command and returns output.
+
+    Raises a RuntimeError if the command exits with a non-zero status, unless
+    ignore_exit_status is set.
+    """
 
     if type(command) == list:
         tool = command[0]
@@ -113,6 +117,13 @@ def run_command(command, message=""):
         stderr = re.sub("\n", "\n\t", stderr)
         if len(stderr) > 1:
             log.info(stderr)
+
+    if output.returncode != 0 and not ignore_exit_status:
+        raise RuntimeError(
+            "Command exited with non-zero status "
+            f"{output.returncode}: {command}\nstderr: "
+            f"{output.stderr.decode('utf-8', errors='replace')}"
+        )
 
     return output
 
