@@ -229,7 +229,7 @@ def compute_loh_correction_df(
 
             if (correction1 < 0.5) and (correction2 < 0.5):
                 corrections_df.at[0, gene + "_lost"] = ",".join(
-                    allele_results[gene][["allele1", "allele2"]].tolist()
+                    [allele_results[gene]["allele1"], allele_results[gene]["allele2"]]
                 )
 
             elif correction1 < 0.5:
