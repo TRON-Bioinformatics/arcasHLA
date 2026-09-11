@@ -24,6 +24,7 @@
 
 import os
 import json
+import math
 import pickle
 import sys
 import argparse
@@ -142,11 +143,15 @@ def compute_quant_metrics(
             )
     for gene, allele_ids in genes.items():
         for allele_id in set(allele_ids):
-            baf = allele_results[gene]["allele1_count"] / (
+            allele_count_total = (
                 allele_results[gene]["allele1_count"]
                 + allele_results[gene]["allele2_count"]
             )
-            allele_results[gene]["baf"] = round(min(baf, 1 - baf), 2)
+            if allele_count_total:
+                baf = allele_results[gene]["allele1_count"] / allele_count_total
+                allele_results[gene]["baf"] = round(min(baf, 1 - baf), 2)
+            else:
+                allele_results[gene]["baf"] = float("nan")
     for gene in genes:
         gene_results[gene]["abundance"] = (
             str(round(gene_results[gene]["abundance"] * 100, 2)) + "%"
@@ -208,18 +213,27 @@ def compute_loh_correction_df(
     corrections_df = pd.DataFrame(columns=corrections_columns)
 
     for gene in genes:
-        baf1 = allele_results[gene]["allele1_count"] / (
+        allele_count_total = (
             allele_results[gene]["allele1_count"]
             + allele_results[gene]["allele2_count"]
         )
+        baf1 = (
+            allele_results[gene]["allele1_count"] / allele_count_total
+            if allele_count_total
+            else float("nan")
+        )
         baf2 = 1 - baf1
 
-        correction1 = (2 * baf1 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
-            purity
-        )
-        correction2 = (2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1) / (
-            purity
-        )
+        if purity:
+            correction1 = (
+                2 * baf1 * (1 + purity * (ploidy - 2) / 2) + purity - 1
+            ) / purity
+            correction2 = (
+                2 * baf2 * (1 + purity * (ploidy - 2) / 2) + purity - 1
+            ) / purity
+        else:
+            correction1 = float("nan")
+            correction2 = float("nan")
 
         corrections_df.at[0, gene + "_CN_1"] = correction1
         corrections_df.at[0, gene + "_CN_2"] = correction2
@@ -238,9 +252,13 @@ def compute_loh_correction_df(
             else:
                 corrections_df.at[0, gene + "_lost"] = allele_results[gene]["allele2"]
 
-        else:
+        elif not (math.isnan(correction1) or math.isnan(correction2)):
             corrections_df.at[0, gene + "_LOSS"] = False
             corrections_df.at[0, gene + "_lost"] = "none"
+
+        else:
+            corrections_df.at[0, gene + "_LOSS"] = pd.NA
+            corrections_df.at[0, gene + "_lost"] = pd.NA
 
     return corrections_df
 
