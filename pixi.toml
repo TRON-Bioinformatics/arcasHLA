@@ -6,6 +6,7 @@ platforms = ["linux-64"]
 
 # Runtime dependencies needed to run arcasHLA and its test suite.
 [dependencies]
+awk = ">=20260426,<20260427"
 bedtools = "2.31.*"
 biopython = "1.83.*"
 coreutils = "9.4.*"

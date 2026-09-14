@@ -18,6 +18,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/linux-64/kallisto-0.44.0-h7d86c95_2.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/samtools-1.19.2-h50ea8bc_1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/awk-20260426-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/aws-c-auth-0.7.22-h96bc93b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/aws-c-cal-0.6.14-h88a6e22_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/aws-c-common-0.9.19-h4ab18f5_0.conda
@@ -274,6 +275,18 @@ packages:
     - _openmp_mutex >=4.5
   size: 28948
   timestamp: 1770939786096
+- conda: https://conda.anaconda.org/conda-forge/linux-64/awk-20260426-hb03c661_0.conda
+  sha256: eb67b7cd80bb6b92d54f5a1ef44af97448b97ebe367c27686671b62df28aa392
+  md5: 9d75714c4a79bcd029bcae8b0dbaea5f
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  constrains:
+  - gawk <0a0
+  license: LicenseRef-Lucent-Technologies
+  run_exports: {}
+  size: 195992
+  timestamp: 1777241472552
 - conda: https://conda.anaconda.org/conda-forge/linux-64/aws-c-auth-0.7.22-h96bc93b_2.conda
   sha256: ed64502dbfb2706d730a76f786e718cd149e6fbfc8c7325ddddba42dcf5af858
   md5: de2b7c9aa9b279cca5542134b7a2b86a
