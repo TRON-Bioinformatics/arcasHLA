@@ -20,7 +20,7 @@ from reference import build_arg_parser as build_reference_parser
 
 def check_tool_depencencies():
     """
-    Docstring for check_tool_depencencies
+    Ensure all required tools are installed and findable.
     """
     tools = [
         "awk",
