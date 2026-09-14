@@ -42,6 +42,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/git-2.43.0-pl5321h709897a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/git-lfs-3.4.1-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/glog-0.7.1-hbabe93e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/gzip-1.14-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.2-hc401514_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-73.2-h59595ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-h7cc23a3_1.conda
@@ -640,6 +641,17 @@ packages:
     - glog >=0.7.1,<0.8.0a0
   size: 143452
   timestamp: 1718284177264
+- conda: https://conda.anaconda.org/conda-forge/linux-64/gzip-1.14-hb9d3cd8_0.conda
+  sha256: 7f0a85e34c384216448b468ac3af2b3b02b609b488f2ba079ca8443db83c2b22
+  md5: 84fa0d10c305971e39f516ca8354a9cd
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  license: GPL-3.0-or-later
+  license_family: GPL
+  run_exports: {}
+  size: 124254
+  timestamp: 1744281694433
 - conda: https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.2-hc401514_3.tar.bz2
   sha256: 9cc029d89b9e576611b87d9fddf4360593c37697ba1f0289ab4612bded020e2e
   md5: 208e40a4df05368aa7ce84c4d81482bc
